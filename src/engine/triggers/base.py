@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
 
 
 class BaseTrigger(ABC):
@@ -7,19 +6,19 @@ class BaseTrigger(ABC):
 
     @abstractmethod
     def name(self) -> str:
-        """Return the trigger type name."""
+        """Return a human-readable name for this trigger."""
         raise NotImplementedError
 
     @abstractmethod
     def get_event_types(self) -> list[str]:
-        """Return the list of event types this trigger produces."""
+        """Return the D-Bus signal names this trigger listens for."""
         raise NotImplementedError
 
     @abstractmethod
-    def check(self) -> bool:
-        """Return True when the trigger should fire."""
+    def match(self, event_data: dict) -> bool:
+        """Check whether this trigger fires for the given event data."""
         raise NotImplementedError
 
-    def get_next_run(self) -> datetime:
-        """Return the next scheduled fire time (override in subclasses)."""
-        raise NotImplementedError
+
+# Backward-compatible alias for existing code that uses TriggerBase
+TriggerBase = BaseTrigger
