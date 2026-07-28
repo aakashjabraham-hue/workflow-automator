@@ -17,55 +17,67 @@ _TRIGGER_TYPES = ["bluetooth", "power", "schedule", "network", "shell"]
 _ACTION_TYPES = ["shell", "launch", "notify"]
 
 
-# ---------------------------------------------------------------------------
-# Helper: build a trigger config dict from the dynamic UI fields
-# ---------------------------------------------------------------------------
-
 def _build_trigger_config(trigger_type, widgets):
     """Return a config dict based on the currently-visible config widgets."""
     if trigger_type == "bluetooth":
         return {
-            "device_name": widgets.get("bt_device", ""),
-            "mac_pattern": widgets.get("bt_mac", ""),
+            "device_name": widgets.get("bt_device", "").get_text().strip(),
+            "mac_pattern": widgets.get("bt_mac", "").get_text().strip(),
         }
     elif trigger_type == "power":
-        return {"state": widgets.get("power_state", "plugged")}
+        idx = widgets.get("power_state", None)
+        if idx is not None and hasattr(idx, "get_selected"):
+            sel = idx.get_selected()
+            state = ["plugged", "unplugged"][sel] if 0 <= sel < 2 else "plugged"
+        else:
+            state = "plugged"
+        return {"state": state}
     elif trigger_type == "schedule":
-        return {"cron_expr": widgets.get("schedule_cron", "")}
+        return {"cron_expr": widgets.get("schedule_cron", "").get_text().strip()}
     elif trigger_type == "network":
         return {
-            "ssid": widgets.get("net_ssid", ""),
-            "interface": widgets.get("net_interface", ""),
+            "ssid": widgets.get("net_ssid", "").get_text().strip(),
+            "interface": widgets.get("net_interface", "").get_text().strip(),
         }
     elif trigger_type == "shell":
-        return {"command": widgets.get("shell_cmd", "")}
+        return {"command": widgets.get("shell_cmd", "").get_text().strip()}
     return {}
 
 
 def _populate_trigger_fields(trigger_type, widgets, config):
     """Fill in the dynamic config fields for the given trigger type."""
     if trigger_type == "bluetooth":
-        widgets["bt_device"].set_text(config.get("device_name", ""))
-        widgets["bt_mac"].set_text(config.get("mac_pattern", ""))
+        if "bt_device" in widgets:
+            widgets["bt_device"].set_text(config.get("device_name", ""))
+        if "bt_mac" in widgets:
+            widgets["bt_mac"].set_text(config.get("mac_pattern", ""))
     elif trigger_type == "power":
         state = config.get("state", "plugged")
-        for i, opt in enumerate(["plugged", "unplugged"]):
-            if opt == state:
-                widgets["power_state"].set_selected(i)
+        idx = ["plugged", "unplugged"].index(state) if state in ("plugged", "unplugged") else 0
+        if "power_state" in widgets:
+            widgets["power_state"].set_selected(idx)
     elif trigger_type == "schedule":
-        widgets["schedule_cron"].set_text(config.get("cron_expr", ""))
+        if "schedule_cron" in widgets:
+            widgets["schedule_cron"].set_text(config.get("cron_expr", ""))
     elif trigger_type == "network":
-        widgets["net_ssid"].set_text(config.get("ssid", ""))
-        widgets["net_interface"].set_text(config.get("interface", ""))
+        if "net_ssid" in widgets:
+            widgets["net_ssid"].set_text(config.get("ssid", ""))
+        if "net_interface" in widgets:
+            widgets["net_interface"].set_text(config.get("interface", ""))
     elif trigger_type == "shell":
-        widgets["shell_cmd"].set_text(config.get("command", ""))
+        if "shell_cmd" in widgets:
+            widgets["shell_cmd"].set_text(config.get("command", ""))
 
+
+# ---------------------------------------------------------------------------
+# WorkflowEditorDialog
+# ---------------------------------------------------------------------------
 
 class WorkflowEditorDialog(Gtk.Dialog):
     """Dialog for creating or editing a workflow.
 
     Signals:
-        workflow-saved: emitted after a successful save, passing the workflow id.
+        workflow-saved: emitted after a successful save, passing the workflow id (int).
     """
 
     __gsignals__ = {
@@ -82,8 +94,9 @@ class WorkflowEditorDialog(Gtk.Dialog):
 
         self.db_path = db_path
         self.workflow_id = workflow_id
-        self._action_rows = []          # list of dicts with widget refs
-        self._trigger_config_widgets = {}  # refs to dynamic trigger config fields
+        self._action_rows = []
+        self._trigger_config_widgets = {}
+        self._loading = False
 
         self._build_ui()
         self._connect_signals()
@@ -118,7 +131,7 @@ class WorkflowEditorDialog(Gtk.Dialog):
         parent.append(label)
 
         self.entry_name = Gtk.Entry()
-        self.entry_name.set_placeholder_text("My workflow…")
+        self.entry_name.set_placeholder_text("My workflow\u2026")
         parent.append(self.entry_name)
 
     def _add_enabled_toggle(self, parent):
@@ -141,19 +154,15 @@ class WorkflowEditorDialog(Gtk.Dialog):
         vbox.set_margin_top(8)
         vbox.set_margin_bottom(8)
 
-        # Trigger type dropdown
         type_label = Gtk.Label(label="Trigger type", halign=Gtk.Align.START)
         type_label.add_css_class("dim-label")
         vbox.append(type_label)
 
         self.dropdown_trigger = Gtk.DropDown()
-        self.dropdown_trigger.set_model(
-            Gtk.StringList.new(_TRIGGER_TYPES)
-        )
+        self.dropdown_trigger.set_model(Gtk.StringList.new(_TRIGGER_TYPES))
         self.dropdown_trigger.set_selected(0)
         vbox.append(self.dropdown_trigger)
 
-        # Dynamic config container — populated when trigger type changes
         self.box_trigger_config = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=6
         )
@@ -171,7 +180,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         vbox.set_margin_top(8)
         vbox.set_margin_bottom(8)
 
-        # Scrollable list for action rows
         self.scrolled_actions = Gtk.ScrolledWindow()
         self.scrolled_actions.set_policy(
             Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
@@ -201,7 +209,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         vbox.set_margin_top(8)
         vbox.set_margin_bottom(8)
 
-        # Cron expression
         cron_label = Gtk.Label(label="Cron expression (e.g. 0 8 * * *)", halign=Gtk.Align.START)
         cron_label.add_css_class("dim-label")
         vbox.append(cron_label)
@@ -210,7 +217,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self.entry_cron.set_placeholder_text("0 8 * * *")
         vbox.append(self.entry_cron)
 
-        # Schedule enabled toggle
         sched_row = Gtk.Box(spacing=12, orientation=Gtk.Orientation.HORIZONTAL)
         sched_row.set_halign(Gtk.Align.START)
         sched_label = Gtk.Label(label="Schedule enabled", halign=Gtk.Align.START)
@@ -225,7 +231,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         parent.append(frame)
 
     def _add_buttons(self, parent):
-        # Test / Save / Cancel at the bottom
         btn_test = Gtk.Button(label="Test")
         btn_test.add_css_class("destructive-action")
         parent.append(btn_test)
@@ -258,22 +263,24 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self._trigger_config_widgets.clear()
 
     def _on_trigger_type_changed(self, dropdown, _param):
+        if self._loading:
+            return
         idx = dropdown.get_selected()
         if idx < 0 or idx >= len(_TRIGGER_TYPES):
             return
         trigger_type = _TRIGGER_TYPES[idx]
         self._clear_trigger_config()
 
-        if trigger_type == "bluetooth":
-            self._build_bt_fields()
-        elif trigger_type == "power":
-            self._build_power_fields()
-        elif trigger_type == "schedule":
-            self._build_schedule_fields()
-        elif trigger_type == "network":
-            self._build_network_fields()
-        elif trigger_type == "shell":
-            self._build_shell_fields()
+        builders = {
+            "bluetooth": self._build_bt_fields,
+            "power": self._build_power_fields,
+            "schedule": self._build_schedule_fields,
+            "network": self._build_network_fields,
+            "shell": self._build_shell_fields,
+        }
+        builder = builders.get(trigger_type)
+        if builder:
+            builder()
 
     def _add_config_row(self, label_text, widget):
         row = Gtk.Box(spacing=12, orientation=Gtk.Orientation.HORIZONTAL)
@@ -335,17 +342,16 @@ class WorkflowEditorDialog(Gtk.Dialog):
 
     def _on_add_action(self, _button):
         row = self._build_action_row("", "", "")
-        self.listbox_actions.append(row)
-        row.show()
+        self.listbox_actions.append(row["outer"])
+        row["outer"].show()
         self._action_rows.append(row)
 
     def _build_action_row(self, action_type, command, args_str):
-        """Build a single action row widget. Returns the outer box."""
+        """Build a single action row.  Returns a dict with widget refs."""
         outer = Gtk.Box(spacing=8, orientation=Gtk.Orientation.HORIZONTAL)
         outer.set_margin_top(4)
         outer.set_margin_bottom(4)
 
-        # Type dropdown
         type_store = Gtk.StringList.new(_ACTION_TYPES)
         dd_type = Gtk.DropDown()
         dd_type.set_model(type_store)
@@ -354,28 +360,24 @@ class WorkflowEditorDialog(Gtk.Dialog):
             dd_type.set_selected(_ACTION_TYPES.index(action_type))
         outer.append(dd_type)
 
-        # Command entry
         entry_cmd = Gtk.Entry()
         entry_cmd.set_placeholder_text("command")
         entry_cmd.set_text(command)
         entry_cmd.set_hexpand(True)
         outer.append(entry_cmd)
 
-        # Args entry
         entry_args = Gtk.Entry()
         entry_args.set_placeholder_text("args (comma-separated)")
         entry_args.set_text(args_str)
         entry_args.set_hexpand(True)
         outer.append(entry_args)
 
-        # Remove button
         btn_remove = Gtk.Button()
         btn_remove.set_icon_name("list-remove-symbolic")
         btn_remove.add_css_class("destructive-action")
         btn_remove.set_tooltip_text("Remove action")
         outer.append(btn_remove)
 
-        # Store references for removal
         row_data = {
             "outer": outer,
             "type_dropdown": dd_type,
@@ -396,72 +398,68 @@ class WorkflowEditorDialog(Gtk.Dialog):
         return row_data
 
     # ------------------------------------------------------------------
-    # Schedule
-    # ------------------------------------------------------------------
-
-    # (The schedule section UI is built statically in _build_ui.
-    # Access via self.entry_cron and self.switch_schedule_enabled.)
-
-    # ------------------------------------------------------------------
     # Load / save
     # ------------------------------------------------------------------
 
     def _load_workflow(self, workflow_id):
         """Populate all fields from an existing workflow in the DB."""
-        conn = self._open_conn()
+        self._loading = True
         try:
-            wf = get_workflow(conn, workflow_id)
-            if wf is None:
-                return
+            conn = self._open_conn()
+            try:
+                wf = get_workflow(conn, workflow_id)
+                if wf is None:
+                    return
 
-            self.set_title("Edit Workflow")
-            self.entry_name.set_text(wf.name or "")
-            self.switch_enabled.set_active(wf.enabled)
+                self.set_title("Edit Workflow")
+                self.entry_name.set_text(wf.name or "")
+                self.switch_enabled.set_active(wf.enabled)
 
-            # Trigger
-            triggers = get_triggers_for_workflow(conn, workflow_id)
-            if triggers:
-                trig = triggers[0]
-                if trig.type in _TRIGGER_TYPES:
-                    self.dropdown_trigger.set_selected(_TRIGGER_TYPES.index(trig.type))
-                self._trigger_config_widgets = {}  # will be populated after UI update
-                # We need to wait for the trigger type change handler to run
-                # so we call it explicitly after setting the dropdown
-                GLib.idle_add(self._populate_trigger, trig.type, trig.config)
+                # Trigger
+                triggers = get_triggers_for_workflow(conn, workflow_id)
+                trig = triggers[0] if triggers else None
+                if trig and trig.type in _TRIGGER_TYPES:
+                    idx = _TRIGGER_TYPES.index(trig.type)
+                    # Block signal while setting the dropdown
+                    self.dropdown_trigger.handler_block_by_func(
+                        self._on_trigger_type_changed
+                    )
+                    self.dropdown_trigger.set_selected(idx)
+                    self.dropdown_trigger.handler_unblock_by_func(
+                        self._on_trigger_type_changed
+                    )
+                    # Manually build the config fields
+                    self._on_trigger_type_changed(self.dropdown_trigger, None)
+                    # Populate the fields with existing values
+                    _populate_trigger_fields(trig.type, self._trigger_config_widgets, trig.config)
 
-            # Actions
-            actions = get_actions_for_workflow(conn, workflow_id)
-            for act in actions:
-                args_str = ", ".join(act.args) if isinstance(act.args, list) else str(act.args)
-                row = self._build_action_row(act.type, act.command, args_str)
-                self.listbox_actions.append(row["outer"])
-                row["outer"].show()
-                self._action_rows.append(row)
+                # Actions
+                actions = get_actions_for_workflow(conn, workflow_id)
+                for act in actions:
+                    args_str = ", ".join(act.args) if isinstance(act.args, list) else str(act.args)
+                    row = self._build_action_row(act.type, act.command, args_str)
+                    self.listbox_actions.append(row["outer"])
+                    row["outer"].show()
+                    self._action_rows.append(row)
 
-            # Schedule — look for a schedule trigger or schedule record
-            # We store schedule info in a "schedule" trigger config if present
-            schedule_trigger = None
-            for t in triggers:
-                if t.type == "schedule":
-                    schedule_trigger = t
-                    break
+                # Schedule
+                schedule_trigger = None
+                for t in triggers:
+                    if t.type == "schedule":
+                        schedule_trigger = t
+                        break
 
-            if schedule_trigger:
-                config = schedule_trigger.config or {}
-                self.entry_cron.set_text(config.get("cron_expr", ""))
-                self.switch_schedule_enabled.set_active(schedule_trigger.enabled)
-            else:
-                self.switch_schedule_enabled.set_active(False)
+                if schedule_trigger:
+                    config = schedule_trigger.config or {}
+                    self.entry_cron.set_text(config.get("cron_expr", ""))
+                    self.switch_schedule_enabled.set_active(schedule_trigger.enabled)
+                else:
+                    self.switch_schedule_enabled.set_active(False)
 
+            finally:
+                conn.close()
         finally:
-            conn.close()
-
-    def _populate_trigger(self, trigger_type, config):
-        """Called via GLib.idle_add after dropdown selection to populate fields."""
-        self.dropdown_trigger.set_selected(_TRIGGER_TYPES.index(trigger_type))
-        self._on_trigger_type_changed(self.dropdown_trigger, None)
-        if trigger_type in _TRIGGER_TYPES:
-            _populate_trigger_fields(trigger_type, self._trigger_config_widgets, config)
+            self._loading = False
 
     def _open_conn(self):
         """Return a sqlite3 connection for the DB."""
@@ -478,8 +476,14 @@ class WorkflowEditorDialog(Gtk.Dialog):
         enabled = self.switch_enabled.get_active()
 
         trig_idx = self.dropdown_trigger.get_selected()
-        trigger_type = _TRIGGER_TYPES[trig_idx] if 0 <= trig_idx < len(_TRIGGER_TYPES) else ""
-        trigger_config = _build_trigger_config(trigger_type, self._trigger_config_widgets)
+        trigger_type = (
+            _TRIGGER_TYPES[trig_idx]
+            if 0 <= trig_idx < len(_TRIGGER_TYPES)
+            else ""
+        )
+        trigger_config = _build_trigger_config(
+            trigger_type, self._trigger_config_widgets
+        )
 
         actions = []
         for row in self._action_rows:
@@ -491,15 +495,9 @@ class WorkflowEditorDialog(Gtk.Dialog):
             )
             command = row["command_entry"].get_text().strip()
             args_raw = row["args_entry"].get_text().strip()
-            if act_type == "notify":
-                # command = title, args = [body]
-                parts = [p.strip() for p in args_raw.split(",")] if args_raw else []
-                args = parts
-            else:
-                parts = [p.strip() for p in args_raw.split(",")] if args_raw else []
-                args = parts
+            args = [p.strip() for p in args_raw.split(",")] if args_raw else []
             actions.append(
-                {"type": act_type, "command": command, "args": args, "enabled": True}
+                {"type": act_type, "command": command, "args": args}
             )
 
         schedule_cron = self.entry_cron.get_text().strip()
@@ -523,7 +521,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
 
         conn = self._open_conn()
         try:
-            # Upsert workflow
             wf = Workflow(
                 name=data["name"],
                 enabled=data["enabled"],
@@ -532,16 +529,19 @@ class WorkflowEditorDialog(Gtk.Dialog):
             wf.save(conn)
             new_id = wf.id
 
-            # Delete existing triggers & actions for this workflow (if editing)
+            # Clean slate for editing
             if self.workflow_id is not None:
                 conn.execute(
-                    "DELETE FROM triggers WHERE workflow_id=?", (self.workflow_id,)
+                    "DELETE FROM triggers WHERE workflow_id=?",
+                    (self.workflow_id,),
                 )
                 conn.execute(
-                    "DELETE FROM actions WHERE workflow_id=?", (self.workflow_id,)
+                    "DELETE FROM actions WHERE workflow_id=?",
+                    (self.workflow_id,),
                 )
                 conn.execute(
-                    "DELETE FROM schedules WHERE workflow_id=?", (self.workflow_id,)
+                    "DELETE FROM schedules WHERE workflow_id=?",
+                    (self.workflow_id,),
                 )
 
             # Insert trigger
@@ -566,19 +566,11 @@ class WorkflowEditorDialog(Gtk.Dialog):
 
             # Insert schedule if configured
             if data["schedule_cron"] and data["schedule_enabled"]:
-                from src.models.workflow import Workflow as _Wf
-                # Use the schedule table
                 conn.execute(
                     "INSERT INTO schedules (workflow_id, cron_expr, next_run) VALUES (?, ?, NULL)",
                     (new_id, data["schedule_cron"]),
                 )
                 conn.commit()
-
-            # Also ensure the schedule's enabled state is reflected in the trigger config
-            if data["trigger_type"] == "schedule":
-                data["trigger_config"]["enabled"] = data["schedule_enabled"]
-                trig.config = data["trigger_config"]
-                trig.save(conn)
 
             self.workflow_id = new_id
             self.emit("workflow-saved", new_id)
@@ -595,23 +587,27 @@ class WorkflowEditorDialog(Gtk.Dialog):
     def _on_test(self, _button):
         """Run all actions once and show the results in a popup."""
         data = self._collect_form_data()
+        if not data["actions"]:
+            self._show_info("Test Results", "No actions to test.")
+            return
+
         executor = ActionExecutor()
         results = []
 
         for act_data in data["actions"]:
-            # Create a simple object with the needed attributes for executor
-            class FakeAction:
+            class _FakeAction:
                 pass
 
-            fake = FakeAction()
+            fake = _FakeAction()
             fake.type = act_data["type"]
             fake.command = act_data["command"]
             fake.args = act_data["args"]
             fake.enabled = True
             result = executor.execute(fake)
-            results.append(f"{act_data['type']}: {act_data['command']} → {'OK' if result['success'] else 'FAIL'}")
+            status = "OK" if result["success"] else "FAIL"
+            results.append(f"{act_data['type']}: {act_data['command']} \u2192 {status}")
 
-        summary = "\n".join(results) if results else "No actions to test."
+        summary = "\n".join(results)
         self._show_info("Test Results", summary)
 
     def _show_error(self, message):

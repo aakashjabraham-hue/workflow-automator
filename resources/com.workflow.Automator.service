@@ -1,0 +1,12 @@
+[Unit]
+Description=Workflow Automator daemon
+After=graphical-session.target bluetooth.target power-profiles-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/workflow-automator --daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
