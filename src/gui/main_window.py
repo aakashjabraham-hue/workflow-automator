@@ -18,8 +18,6 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.set_title("Workflow Automator")
         self.set_default_size(500, 400)
-        self.set_min_content_width(500)
-        self.set_min_content_height(400)
 
         # Database path — share with the daemon (use a file-based DB)
         import os
