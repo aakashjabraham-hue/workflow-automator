@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: workflow-automator
+Version: 0.1.0
+Requires-Python: >=3.11
+Requires-Dist: PyGObject
+Requires-Dist: dbus-python
+Requires-Dist: croniter
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"

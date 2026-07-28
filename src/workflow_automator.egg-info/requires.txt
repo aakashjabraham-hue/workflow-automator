@@ -1,0 +1,7 @@
+PyGObject
+dbus-python
+croniter
+
+[dev]
+pytest
+pytest-cov

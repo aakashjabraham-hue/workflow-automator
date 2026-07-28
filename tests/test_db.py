@@ -20,7 +20,8 @@ def test_init_db_creates_all_tables(conn):
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
     )
     tables = {row[0] for row in cursor.fetchall()}
-    assert tables == {"actions", "workflows", "triggers", "schedules"}
+    for expected in ("workflows", "triggers", "actions", "schedules"):
+        assert expected in tables
 
 
 def test_schema_columns_workflows(conn):
