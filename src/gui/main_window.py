@@ -1,180 +1,165 @@
-"""MainWindow — the primary application window for the Workflow Automator.
-
-Provides a list workflow overview and opens WorkflowEditorDialog for
-creating/editing workflows.  After a save the workflow list is refreshed
-automatically via the editor's workflow-saved signal.
-"""
+"""MainWindow — the primary application window for Workflow Automator."""
 
 import gi
-gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GObject
 
-from src.gui.workflow_editor import WorkflowEditorDialog
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk
+
+from src.db import get_db, init_db
+from src.gui.widgets import WorkflowRow
+from src.models.workflow import Workflow, get_all_workflows
 
 
 class MainWindow(Gtk.ApplicationWindow):
-    """Main window showing all workflows and providing CRUD via the editor."""
+    """Main application window showing the workflow list."""
 
-    def __init__(self, app, db_path):
-        super().__init__(application=app)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
         self.set_title("Workflow Automator")
-        self.set_default_size(600, 480)
-        self.db_path = db_path
+        self.set_default_size(500, 400)
+        self.set_min_content_width(500)
+        self.set_min_content_height(400)
 
-        self._build_ui()
-        self._refresh_workflow_list()
+        # Database path — share with the daemon (use a file-based DB)
+        import os
+        db_dir = os.path.expanduser("~/.workflow-automator")
+        os.makedirs(db_dir, exist_ok=True)
+        self.db_path = os.path.join(db_dir, "workflows.db")
+        self._conn = None
+
+        self._build_header_bar()
+        self._build_body()
+        self._refresh_workflows()
 
     # ------------------------------------------------------------------
-    # UI
+    # Database helpers
     # ------------------------------------------------------------------
 
-    def _build_ui(self):
+    @property
+    def conn(self):
+        """Lazily create a database connection."""
+        if self._conn is None:
+            self._conn = get_db(self.db_path)
+            init_db(self._conn)
+        return self._conn
+
+    # ------------------------------------------------------------------
+    # Header bar
+    # ------------------------------------------------------------------
+
+    def _build_header_bar(self) -> None:
+        """Create the header bar with title and add button."""
         header = Gtk.HeaderBar()
         header.set_title("Workflow Automator")
         header.set_show_title_buttons(True)
 
-        btn_new = Gtk.Button(label="New Workflow")
-        btn_new.add_css_class("suggested-action")
-        header.pack_start(btn_new)
-        self.btn_new = btn_new
-        btn_new.connect("clicked", self._on_new_workflow)
+        # Add workflow button
+        add_btn = Gtk.Button()
+        add_btn.set_icon_name("list-add-symbolic")
+        add_btn.set_tooltip_text("Add new workflow")
+        add_btn.add_css_class("suggested-action")
+        add_btn.connect("clicked", self._on_add_workflow)
+        header.pack_end(add_btn)
 
         self.set_titlebar(header)
 
-        # Main content — scrolled list of workflows
+    # ------------------------------------------------------------------
+    # Body
+    # ------------------------------------------------------------------
+
+    def _build_body(self) -> None:
+        """Create the scrolled workflow list."""
+        # Scrolled window wrapping the list box
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_vexpand(True)
+        scrolled.set_hexpand(True)
+        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
 
-        self.listbox_workflows = Gtk.ListBox()
-        self.listbox_workflows.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        scrolled.set_child(self.listbox_workflows)
+        # List box for workflows
+        self._listbox = Gtk.ListBox()
+        self._listbox.set_activate_on_single_click(True)
+        self._listbox.connect("row-activated", self._on_row_activated)
+        self._listbox.set_selection_mode(Gtk.SelectionMode.NONE)
 
-        # Buttons bar at the bottom
-        bar = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=8,
-            margin_start=12,
-            margin_end=12,
-            margin_top=8,
-            margin_bottom=12,
-        )
-
-        btn_edit = Gtk.Button(label="Edit")
-        bar.append(btn_edit)
-        self.btn_edit = btn_edit
-        btn_edit.connect("clicked", self._on_edit_workflow)
-
-        btn_delete = Gtk.Button(label="Delete")
-        btn_delete.add_css_class("destructive-action")
-        bar.append(btn_delete)
-        self.btn_delete = btn_delete
-        btn_delete.connect("clicked", self._on_delete_workflow)
-
-        # Status label
-        self.label_status = Gtk.Label(label="")
-        self.label_status.set_halign(Gtk.Align.START)
-        bar.append(self.label_status)
-
-        # Main vertical box
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        vbox.append(scrolled)
-        vbox.append(bar)
-        self.set_child(vbox)
-
-        # Wire up editor signal
-        self.connect("workflow-saved", self._on_workflow_saved)
+        scrolled.set_child(self._listbox)
+        self.set_child(scrolled)
 
     # ------------------------------------------------------------------
-    # Workflow list
+    # Refresh
     # ------------------------------------------------------------------
 
-    def _refresh_workflow_list(self):
-        """Reload workflows from the DB and repopulate the ListBox."""
+    def _refresh_workflows(self) -> None:
+        """Reload workflows from the database and repopulate the list."""
         # Clear existing rows
-        for row in self.listbox_workflows.get_children():
-            row.unparent()
+        old_row = self._listbox.get_first_child()
+        while old_row is not None:
+            next_row = old_row.get_next_sibling()
+            self._listbox.remove(old_row)
+            old_row = next_row
 
-        from src.db import get_db, init_db
-        from src.models.workflow import get_all_workflows
-
-        conn = get_db(self.db_path)
-        try:
-            workflows = get_all_workflows(conn)
-        finally:
-            conn.close()
-
+        # Query DB and build rows
+        workflows = get_all_workflows(self.conn)
         for wf in workflows:
-            label = Gtk.Label(label=wf.name)
-            label.set_halign(Gtk.Align.START)
-            row = Gtk.ListBoxRow()
-            row.set_child(label)
-            row._workflow_id = wf.id  # type: ignore[attr-defined]
-            self.listbox_workflows.append(row)
-
-        count = len(workflows)
-        self.label_status.set_text(f"{count} workflow{'s' if count != 1 else ''}")
+            row = WorkflowRow(
+                wf,
+                on_toggle=self._on_toggle_workflow,
+                on_edit=self._on_edit_workflow,
+                on_delete=self._on_delete_workflow,
+            )
+            self._listbox.append(row)
 
     # ------------------------------------------------------------------
-    # Editor integration
+    # Callbacks
     # ------------------------------------------------------------------
 
-    def _open_editor(self, workflow_id=None):
-        """Open WorkflowEditorDialog and attach a save callback."""
-        dlg = WorkflowEditorDialog(
+    def _on_add_workflow(self, _button) -> None:
+        """Create a new workflow and open the editor."""
+        conn = self.conn
+        new_wf = Workflow(name="New Workflow")
+        new_wf.save(conn)
+        self._refresh_workflows()
+        # Open the editor for the newly created workflow
+        self._open_editor(new_wf)
+
+    def _on_toggle_workflow(self, workflow, enabled) -> None:
+        """Toggle a workflow's enabled state in the DB."""
+        workflow.enabled = enabled
+        workflow.save(self.conn)
+
+    def _on_edit_workflow(self, workflow) -> None:
+        """Open the workflow editor dialog."""
+        from src.gui.workflow_editor import WorkflowEditorDialog
+
+        self._open_editor(workflow)
+
+    def _on_delete_workflow(self, workflow) -> None:
+        """Delete a workflow from the database and refresh the list."""
+        workflow.delete(self.conn)
+        self._refresh_workflows()
+
+    def _on_row_activated(self, _listbox, row) -> None:
+        """Handle double-click on a workflow row — open the editor."""
+        if isinstance(row, WorkflowRow):
+            self._on_edit_workflow(row.workflow)
+
+    def _open_editor(self, workflow) -> None:
+        """Open the WorkflowEditorDialog for the given workflow."""
+        from src.gui.workflow_editor import WorkflowEditorDialog
+
+        dialog = WorkflowEditorDialog(
             parent_window=self,
             db_path=self.db_path,
-            workflow_id=workflow_id,
+            workflow_id=workflow.id,
         )
-        dlg.connect("workflow-saved", self._on_editor_saved)
-        dlg.present()
+        dialog.set_transient_for(self)
+        dialog.set_modal(True)
 
-    def _on_editor_saved(self, _dialog, workflow_id):
-        """Refresh the list when the editor saves a workflow."""
-        self._refresh_workflow_list()
+        # Connect response signal to refresh the list on close
+        dialog.connect("response", self._on_editor_closed)
+        dialog.present()
 
-    def _on_workflow_saved(self, _widget, workflow_id):
-        """Signal handler for workflow-saved from anywhere in the app."""
-        self._refresh_workflow_list()
-
-    # ------------------------------------------------------------------
-    # Button callbacks
-    # ------------------------------------------------------------------
-
-    def _on_new_workflow(self, _button):
-        self._open_editor(workflow_id=None)
-
-    def _on_edit_workflow(self, _button):
-        selected = self.listbox_workflows.get_selected_row()
-        if selected is None:
-            self._show_status("Select a workflow to edit.")
-            return
-        wf_id = getattr(selected, "_workflow_id", None)
-        if wf_id is None:
-            return
-        self._open_editor(workflow_id=wf_id)
-
-    def _on_delete_workflow(self, _button):
-        selected = self.listbox_workflows.get_selected_row()
-        if selected is None:
-            self._show_status("Select a workflow to delete.")
-            return
-        wf_id = getattr(selected, "_workflow_id", None)
-        if wf_id is None:
-            return
-
-        from src.db import get_db
-        from src.models.workflow import get_workflow
-
-        conn = get_db(self.db_path)
-        try:
-            wf = get_workflow(conn, wf_id)
-            if wf is None:
-                return
-            wf.delete(conn)
-        finally:
-            conn.close()
-
-        self._refresh_workflow_list()
-
-    def _show_status(self, message):
-        self.label_status.set_text(message)
+    def _on_editor_closed(self, dialog, response_id) -> None:
+        """Called when the editor dialog is closed — refresh the list."""
+        self._refresh_workflows()
+        dialog.destroy()

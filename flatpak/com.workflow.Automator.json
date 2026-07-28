@@ -1,0 +1,34 @@
+{
+    "app-id": "com.workflow.Automator",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "47",
+    "sdk": "org.gnome.Sdk",
+    "command": "workflow-automator",
+    "finish-args": [
+        "--share=dbus",
+        "--socket=pulseaudio",
+        "--device=bluetooth",
+        "--talk-name=org.freedesktop.login1",
+        "--socket=wayland",
+        "--socket=fallback-x11"
+    ],
+    "modules": [
+        {
+            "name": "workflow-automator",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip install --prefix=/app --no-build-isolation .",
+                "install -Dm755 resources/com.workflow.Automator.desktop /app/share/applications/com.workflow.Automator.desktop",
+                "install -Dm644 resources/com.workflow.Automator.metainfo.xml /app/share/metainfo/com.workflow.Automator.metainfo.xml",
+                "install -Dm644 resources/com.workflow.Automator.service /app/share/dbus-1/services/com.workflow.Automator.service"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/workflow-automator/workflow-automator.git",
+                    "tag": "0.1.0"
+                }
+            ]
+        }
+    ]
+}

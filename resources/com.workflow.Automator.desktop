@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Workflow Automator
+Exec=workflow-automator --foreground
+Icon=workflow-automator
+Categories=Utility;Automation;
+Type=Application
+Terminal=false
+Comment=Automate Linux workflows with triggers and actions

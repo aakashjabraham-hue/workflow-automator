@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>com.workflow.Automator</id>
+  <launchable type="desktop_id">com.workflow.Automator.desktop</launchable>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <content_rating type="oars-1.0">
+    <content_attribute id="sexual">none</content_attribute>
+    <content_attribute id="violence">none</content_attribute>
+    <content_attribute id="drugs">none</content_attribute>
+    <content_attribute id="language">none</content_attribute>
+    <content_attribute id="socialchat">none</content_attribute>
+    <content_attribute id="financial">none</content_attribute>
+    <content_attribute id="gaming">none</content_attribute>
+    <content_attribute id="humanprivacy">none</content_attribute>
+  </content_rating>
+  <url type="homepage">https://github.com/workflow-automator/workflow-automator</url>
+  <url type="bugtracker">https://github.com/workflow-automator/workflow-automator/issues</url>
+  <developer_name>Workflow Automator Contributors</developer_name>
+  <summary>Automate Linux workflows with triggers and actions</summary>
+  <description>
+    <p>Workflow Automator is a GNOME desktop application that lets you automate Linux workflows using triggers and actions.</p>
+    <p>Create workflows that fire on system events such as Bluetooth device connections, power state changes, or scheduled times. Each workflow can execute shell commands, launch applications, send desktop notifications, or call D-Bus methods.</p>
+  </description>
+</component>
