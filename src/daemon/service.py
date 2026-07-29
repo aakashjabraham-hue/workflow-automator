@@ -199,6 +199,8 @@ class DaemonService:
 
     def _poll_schedule_triggers(self) -> None:
         """Check all registered triggers — schedule + power polling."""
+        self.logger.debug("Polling triggers (%d registered)", len(self._triggers))
+
         # Run poll-based triggers (power, etc.) — dispatch returns matched triggers
         poll_events = self.event_bus.poll_triggers()
         for event in poll_events:
