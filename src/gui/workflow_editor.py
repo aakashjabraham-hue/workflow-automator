@@ -14,7 +14,8 @@ from src.engine.executor import ActionExecutor
 
 
 _TRIGGER_TYPES = ["bluetooth", "power", "schedule", "network", "shell"]
-_ACTION_TYPES = ["shell", "launch", "notify"]
+_ACTION_TYPES = ["shell", "launch", "notify", "media"]
+_MEDIA_ACTIONS = ["Play", "Pause", "Play-Pause", "Next", "Previous", "Stop", "Open URI"]
 
 
 def _build_trigger_config(trigger_type, widgets):
@@ -280,8 +281,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self._trigger_config_widgets.clear()
 
     def _on_trigger_type_changed(self, dropdown, _param):
-        if self._loading:
-            return
         idx = dropdown.get_selected()
         if idx < 0 or idx >= len(_TRIGGER_TYPES):
             return
@@ -437,6 +436,70 @@ class WorkflowEditorDialog(Gtk.Dialog):
         notify_box.append(entry_notify_subject)
         notify_box.append(entry_notify_body)
 
+        # --- Media: MPRIS player + action picker ---
+        media_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        media_box.set_hexpand(True)
+
+        # Player + action row
+        media_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        media_row.set_hexpand(True)
+
+        import subprocess as _sp
+        try:
+            _players_raw = _sp.run(
+                ["playerctl", "-l"], capture_output=True, text=True, timeout=5
+            ).stdout.strip().split("\n")
+            _mp_players = [p for p in _players_raw if p]
+        except (FileNotFoundError, OSError, _sp.TimeoutExpired):
+            _mp_players = []
+        if not _mp_players:
+            _mp_players = ["(playerctl not found)"]
+
+        media_player_store = Gtk.StringList.new(_mp_players)
+        dd_media_player = Gtk.DropDown()
+        dd_media_player.set_model(media_player_store)
+        dd_media_player.set_hexpand(True)
+        dd_media_player.set_tooltip_text("Select a media player")
+        if _mp_players == ["(playerctl not found)"]:
+            dd_media_player.set_sensitive(False)
+        media_row.append(dd_media_player)
+
+        _MEDIA_ACTIONS = ["Play", "Pause", "Play-Pause", "Next", "Previous", "Stop", "Open URI"]
+        media_action_store = Gtk.StringList.new(_MEDIA_ACTIONS)
+        dd_media_action = Gtk.DropDown()
+        dd_media_action.set_model(media_action_store)
+        dd_media_action.set_selected(0)
+        dd_media_action.set_size_request(120, -1)
+        media_row.append(dd_media_action)
+        media_box.append(media_row)
+
+        # URI entry (only visible when action is "Open URI")
+        entry_media_uri = Gtk.Entry()
+        entry_media_uri.set_placeholder_text("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M")
+        entry_media_uri.set_hexpand(True)
+        entry_media_uri.set_visible(False)
+        media_box.append(entry_media_uri)
+
+        def _on_media_action_changed(*_args):
+            act_idx = dd_media_action.get_selected()
+            act = _MEDIA_ACTIONS[act_idx] if 0 <= act_idx < len(_MEDIA_ACTIONS) else ""
+            entry_media_uri.set_visible(act == "Open URI")
+
+        dd_media_action.connect("notify::selected", _on_media_action_changed)
+
+        # Pre-populate media fields if loading
+        if action_type == "media":
+            parts = command.split("|", 1)
+            if len(parts) == 2:
+                player, media_act = parts
+                if player in _mp_players:
+                    dd_media_player.set_selected(_mp_players.index(player))
+                if media_act in _MEDIA_ACTIONS:
+                    dd_media_action.set_selected(_MEDIA_ACTIONS.index(media_act))
+                    if media_act == "Open URI" and args_str:
+                        entry_media_uri.set_text(args_str)
+                        entry_media_uri.set_visible(True)
+
         def _on_action_type_changed(*_args):
             """Swap the command container content based on action type."""
             t_idx = dd_type.get_selected()
@@ -453,6 +516,8 @@ class WorkflowEditorDialog(Gtk.Dialog):
                 cmd_container.append(dd_app)
             elif t == "notify":
                 cmd_container.append(notify_box)
+            elif t == "media":
+                cmd_container.append(media_box)
             else:
                 cmd_container.append(entry_shell_cmd)
             cmd_container.show()
@@ -483,6 +548,11 @@ class WorkflowEditorDialog(Gtk.Dialog):
             # Notify
             "notify_subject_entry": entry_notify_subject,
             "notify_body_entry": entry_notify_body,
+            # Media
+            "media_player_dropdown": dd_media_player,
+            "media_action_dropdown": dd_media_action,
+            "media_uri_entry": entry_media_uri,
+            "media_players": _mp_players,
         }
 
         def _on_remove(btn):
@@ -603,6 +673,15 @@ class WorkflowEditorDialog(Gtk.Dialog):
                 command = row["notify_subject_entry"].get_text().strip()
                 body = row["notify_body_entry"].get_text().strip()
                 args = [body] if body else []
+            elif act_type == "media":
+                p_idx = row["media_player_dropdown"].get_selected()
+                a_idx = row["media_action_dropdown"].get_selected()
+                players = row["media_players"]
+                player = players[p_idx] if 0 <= p_idx < len(players) else ""
+                action = _MEDIA_ACTIONS[a_idx] if 0 <= a_idx < len(_MEDIA_ACTIONS) else "Play"
+                command = f"{player}|{action}"
+                uri = row["media_uri_entry"].get_text().strip()
+                args = [uri] if uri else []
             else:
                 command = row["shell_entry"].get_text().strip()
                 args = []
