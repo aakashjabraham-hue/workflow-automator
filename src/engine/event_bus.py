@@ -60,8 +60,12 @@ class EventBus:
         """
         try:
             import dbus
+            import dbus.mainloop.glib
         except ImportError:
             return
+
+        # Attach D-Bus to GLib main loop so async signal reception works
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
         self._dbus_bus = dbus.SystemBus()
 
