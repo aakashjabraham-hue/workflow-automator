@@ -86,4 +86,4 @@ class PowerTrigger(TriggerBase):
         return self._state_matches(online)
 
     def get_event_types(self) -> list[str]:
-        return ["PropertiesChanged"]
+        return ["PropertiesChanged", "power_changed"]

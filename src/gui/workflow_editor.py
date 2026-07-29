@@ -445,24 +445,50 @@ class WorkflowEditorDialog(Gtk.Dialog):
         media_row.set_hexpand(True)
 
         import subprocess as _sp
+        # Known MPRIS player names (always included even if not currently running)
+        _known_mpris = [
+            "spotify", "vlc", "firefox", "chromium", "mpv",
+            "audacious", "clementine", "rhythmbox", "amarok",
+            "plasma-browser-integration", "strawberry", "tauon",
+        ]
+        # Get currently active MPRIS players
+        _mp_players = []
         try:
             _players_raw = _sp.run(
                 ["playerctl", "-l"], capture_output=True, text=True, timeout=5
             ).stdout.strip().split("\n")
-            _mp_players = [p for p in _players_raw if p]
+            _active = [p.strip() for p in _players_raw if p.strip()]
+            _mp_players = list(_active)  # active first
+            # Add known players that aren't already in the list
+            for known in _known_mpris:
+                if known not in _mp_players:
+                    _mp_players.append(known)
         except (FileNotFoundError, OSError, _sp.TimeoutExpired):
-            _mp_players = []
-        if not _mp_players:
-            _mp_players = ["(playerctl not found)"]
+            _mp_players = list(_known_mpris)
+
+        # Add 'Custom...' option and a custom name entry
+        _mp_players.append("Custom...")
 
         media_player_store = Gtk.StringList.new(_mp_players)
         dd_media_player = Gtk.DropDown()
         dd_media_player.set_model(media_player_store)
         dd_media_player.set_hexpand(True)
         dd_media_player.set_tooltip_text("Select a media player")
-        if _mp_players == ["(playerctl not found)"]:
-            dd_media_player.set_sensitive(False)
         media_row.append(dd_media_player)
+
+        # Custom player name entry (hidden by default)
+        entry_custom_player = Gtk.Entry()
+        entry_custom_player.set_placeholder_text("Custom player name (e.g. spotify)")
+        entry_custom_player.set_hexpand(True)
+        entry_custom_player.set_visible(False)
+        media_box.append(entry_custom_player)
+
+        # Toggle custom entry visibility
+        def _on_media_player_changed(*_args):
+            p_idx = dd_media_player.get_selected()
+            is_custom = _mp_players[p_idx] == "Custom..." if 0 <= p_idx < len(_mp_players) else False
+            entry_custom_player.set_visible(is_custom)
+        dd_media_player.connect("notify::selected", _on_media_player_changed)
 
         _MEDIA_ACTIONS = ["Play", "Pause", "Play-Pause", "Next", "Previous", "Stop", "Open URI"]
         media_action_store = Gtk.StringList.new(_MEDIA_ACTIONS)
@@ -494,6 +520,12 @@ class WorkflowEditorDialog(Gtk.Dialog):
                 player, media_act = parts
                 if player in _mp_players:
                     dd_media_player.set_selected(_mp_players.index(player))
+                else:
+                    # Unknown player — use "Custom..." and fill the entry
+                    custom_idx = _mp_players.index("Custom...")
+                    dd_media_player.set_selected(custom_idx)
+                    entry_custom_player.set_text(player)
+                    entry_custom_player.set_visible(True)
                 if media_act in _MEDIA_ACTIONS:
                     dd_media_action.set_selected(_MEDIA_ACTIONS.index(media_act))
                     if media_act == "Open URI" and args_str:
@@ -553,6 +585,7 @@ class WorkflowEditorDialog(Gtk.Dialog):
             "media_action_dropdown": dd_media_action,
             "media_uri_entry": entry_media_uri,
             "media_players": _mp_players,
+            "media_custom_entry": entry_custom_player,
         }
 
         def _on_remove(btn):
@@ -677,7 +710,14 @@ class WorkflowEditorDialog(Gtk.Dialog):
                 p_idx = row["media_player_dropdown"].get_selected()
                 a_idx = row["media_action_dropdown"].get_selected()
                 players = row["media_players"]
-                player = players[p_idx] if 0 <= p_idx < len(players) else ""
+                if 0 <= p_idx < len(players):
+                    player = players[p_idx]
+                    if player == "Custom...":
+                        player = row["media_custom_entry"].get_text().strip()
+                        if not player:
+                            player = "spotify"
+                else:
+                    player = "spotify"
                 action = _MEDIA_ACTIONS[a_idx] if 0 <= a_idx < len(_MEDIA_ACTIONS) else "Play"
                 command = f"{player}|{action}"
                 uri = row["media_uri_entry"].get_text().strip()
