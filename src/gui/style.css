@@ -1,0 +1,260 @@
+/* ── Workflow Automator — Custom Stylesheet ─────────────────────── */
+/* Modern dark theme inspired by GNOME Builder / Code-style UIs     */
+
+/* ── Global ─────────────────────────────────────────────────────── */
+window.workflow-automator {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+}
+
+window.workflow-automator label {
+    color: #cdd6f4;
+}
+
+window.workflow-automator .dim-label {
+    color: #6c7086;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 2px;
+}
+
+/* ── Header Bar ─────────────────────────────────────────────────── */
+window.workflow-automator headerbar {
+    background: linear-gradient(180deg, #181825 0%, #11111b 100%);
+    border-bottom: 1px solid #313244;
+    padding: 4px 8px;
+    min-height: 48px;
+}
+
+window.workflow-automator headerbar label.title {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #cdd6f4;
+}
+
+/* ── Workflow List ──────────────────────────────────────────────── */
+
+/* Empty state */
+window.workflow-automator .empty-state {
+    padding: 60px 20px;
+}
+
+window.workflow-automator .empty-state label {
+    font-size: 1.2em;
+    color: #585b70;
+}
+
+window.workflow-automator .empty-state .empty-icon {
+    font-size: 3em;
+    margin-bottom: 12px;
+}
+
+/* Workflow row cards */
+workflow-row {
+    background: #1e1e2e;
+    border: none;
+    transition: background 0.15s ease;
+}
+
+workflow-row:hover {
+    background: #313244;
+}
+
+workflow-row:selected {
+    background: #45475a;
+}
+
+workflow-row .card {
+    background: #181825;
+    border-radius: 10px;
+    margin: 4px 8px;
+    padding: 8px 12px;
+    border: 1px solid #313244;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.15s ease;
+}
+
+workflow-row:hover .card {
+    border-color: #45475a;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+workflow-row .card .workflow-icon {
+    font-size: 1.5em;
+    margin-right: 8px;
+}
+
+workflow-row .card .workflow-name {
+    font-size: 1em;
+    font-weight: 600;
+    color: #cdd6f4;
+}
+
+workflow-row .card .workflow-trigger-label {
+    font-size: 0.8em;
+    color: #6c7086;
+    padding-top: 2px;
+}
+
+workflow-row .card .status-dot {
+    min-width: 10px;
+    min-height: 10px;
+    border-radius: 5px;
+    margin: 6px;
+}
+
+workflow-row .card .status-dot.enabled {
+    background: #a6e3a1;
+}
+
+workflow-row .card .status-dot.disabled {
+    background: #45475a;
+}
+
+/* ── Editor Dialog ──────────────────────────────────────────────── */
+
+dialog.workflow-editor {
+    background: #1e1e2e;
+}
+
+dialog.workflow-editor label.title {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #cdd6f4;
+}
+
+dialog.workflow-editor frame {
+    background: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+dialog.workflow-editor frame > border {
+    border: none;
+}
+
+dialog.workflow-editor frame > label {
+    font-weight: 700;
+    font-size: 0.9em;
+    color: #a6adc8;
+    padding: 4px 8px;
+    background: #11111b;
+    border-radius: 8px 8px 0 0;
+}
+
+dialog.workflow-editor entry {
+    background: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-height: 32px;
+}
+
+dialog.workflow-editor entry:focus {
+    border-color: #89b4fa;
+    box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.3);
+}
+
+dialog.workflow-editor entry:disabled {
+    background: #262637;
+    color: #585b70;
+}
+
+dialog.workflow-editor switch {
+    margin: 4px;
+}
+
+dialog.workflow-editor button.suggested-action {
+    background: #89b4fa;
+    color: #1e1e2e;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 6px 18px;
+    transition: all 0.15s ease;
+}
+
+dialog.workflow-editor button.suggested-action:hover {
+    background: #b4d0fb;
+}
+
+dialog.workflow-editor button.destructive-action {
+    background: #f38ba8;
+    color: #1e1e2e;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 6px 18px;
+}
+
+dialog.workflow-editor button.destructive-action:hover {
+    background: #f5a0b8;
+}
+
+dialog.workflow-editor button.flat {
+    background: transparent;
+    color: #a6adc8;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+dialog.workflow-editor button.flat:hover {
+    background: #313244;
+}
+
+dialog.workflow-editor dropdown {
+    background: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    min-height: 32px;
+}
+
+dialog.workflow-editor dropdown:hover {
+    border-color: #89b4fa;
+}
+
+/* Action rows inside the editor */
+dialog.workflow-editor .action-row {
+    background: #262637;
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin: 2px 0;
+    border: 1px solid #313244;
+}
+
+dialog.workflow-editor .action-row:hover {
+    border-color: #45475a;
+}
+
+/* ── Message Dialogs ────────────────────────────────────────────── */
+messagedialog {
+    background: #1e1e2e;
+}
+
+messagedialog label {
+    color: #cdd6f4;
+}
+
+messagedialog button {
+    border-radius: 8px;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────── */
+scrollbar {
+    background: #11111b;
+}
+
+scrollbar slider {
+    background: #45475a;
+    border-radius: 4px;
+    min-width: 6px;
+    min-height: 30px;
+}
+
+scrollbar slider:hover {
+    background: #585b70;
+}

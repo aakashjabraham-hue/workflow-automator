@@ -98,6 +98,8 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self._trigger_config_widgets = {}
         self._loading = False
 
+        self.add_css_class("workflow-editor")
+
         self._build_ui()
         self._connect_signals()
 
@@ -348,9 +350,12 @@ class WorkflowEditorDialog(Gtk.Dialog):
 
     def _build_action_row(self, action_type, command, args_str):
         """Build a single action row.  Returns a dict with widget refs."""
+        from src.gui.app_picker import get_installed_apps
+
         outer = Gtk.Box(spacing=8, orientation=Gtk.Orientation.HORIZONTAL)
         outer.set_margin_top(4)
         outer.set_margin_bottom(4)
+        outer.add_css_class("action-row")
 
         type_store = Gtk.StringList.new(_ACTION_TYPES)
         dd_type = Gtk.DropDown()
@@ -360,11 +365,56 @@ class WorkflowEditorDialog(Gtk.Dialog):
             dd_type.set_selected(_ACTION_TYPES.index(action_type))
         outer.append(dd_type)
 
+        # Command container — holds either a text entry or an app dropdown
+        cmd_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        cmd_container.set_hexpand(True)
+
+        # Text entry for shell/notify commands
         entry_cmd = Gtk.Entry()
         entry_cmd.set_placeholder_text("command")
         entry_cmd.set_text(command)
         entry_cmd.set_hexpand(True)
-        outer.append(entry_cmd)
+
+        # App dropdown for launch type
+        _all_apps = get_installed_apps()
+        _app_names = [a.name for a in _all_apps]
+        app_store = Gtk.StringList.new(_app_names)
+        dd_app = Gtk.DropDown()
+        dd_app.set_model(app_store)
+        dd_app.set_size_request(220, -1)
+        dd_app.set_hexpand(True)
+        # Auto-completion entry overlay
+        dd_app.set_tooltip_text("Select an app to launch")
+
+        # If command matches an app exec, pre-select it
+        selected_app_idx = -1
+        for i, app in enumerate(_all_apps):
+            if app.exec_cmd in command or command in app.exec_cmd:
+                selected_app_idx = i
+                break
+        if selected_app_idx >= 0:
+            dd_app.set_selected(selected_app_idx)
+
+        def _on_action_type_changed(*_args):
+            """Swap between text entry and app dropdown based on action type."""
+            t_idx = dd_type.get_selected()
+            t = _ACTION_TYPES[t_idx] if 0 <= t_idx < len(_ACTION_TYPES) else ""
+
+            for child in cmd_container.get_children():
+                cmd_container.remove(child)
+
+            if t == "launch":
+                cmd_container.append(dd_app)
+            else:
+                cmd_container.append(entry_cmd)
+            cmd_container.show()
+
+        dd_type.connect("notify::selected", _on_action_type_changed)
+
+        # Initialize the right view
+        _on_action_type_changed()
+
+        outer.append(cmd_container)
 
         entry_args = Gtk.Entry()
         entry_args.set_placeholder_text("args (comma-separated)")
@@ -384,6 +434,9 @@ class WorkflowEditorDialog(Gtk.Dialog):
             "command_entry": entry_cmd,
             "args_entry": entry_args,
             "remove_button": btn_remove,
+            "cmd_container": cmd_container,
+            "app_dropdown": dd_app,
+            "app_list": _all_apps,
         }
 
         def _on_remove(btn):
@@ -493,7 +546,15 @@ class WorkflowEditorDialog(Gtk.Dialog):
                 if 0 <= act_type_idx < len(_ACTION_TYPES)
                 else ""
             )
-            command = row["command_entry"].get_text().strip()
+            # For "launch" type, get command from the app dropdown
+            if act_type == "launch":
+                app_idx = row["app_dropdown"].get_selected()
+                if 0 <= app_idx < len(row["app_list"]):
+                    command = row["app_list"][app_idx].exec_cmd
+                else:
+                    command = row["command_entry"].get_text().strip()
+            else:
+                command = row["command_entry"].get_text().strip()
             args_raw = row["args_entry"].get_text().strip()
             args = [p.strip() for p in args_raw.split(",")] if args_raw else []
             actions.append(

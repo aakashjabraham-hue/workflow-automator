@@ -8,6 +8,25 @@ from gi.repository import Gtk
 from src.db import get_db, init_db
 from src.gui.widgets import WorkflowRow
 from src.models.workflow import Workflow, get_all_workflows
+from src.models.trigger import get_triggers_for_workflow
+
+
+def _load_css():
+    """Load the custom stylesheet from style.css."""
+    import os
+    provider = Gtk.CssProvider()
+    css_path = os.path.join(os.path.dirname(__file__), "style.css")
+    if not os.path.exists(css_path):
+        return
+    provider.load_from_path(css_path)
+    # Apply to default display only when available
+    display = Gtk.Widget.get_default()
+    if display is not None:
+        Gtk.StyleContext.add_provider_for_display(
+            display,
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
 
 
 class MainWindow(Gtk.ApplicationWindow):
@@ -16,8 +35,11 @@ class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        _load_css()
+
         self.set_title("Workflow Automator")
         self.set_default_size(500, 400)
+        self.add_css_class("workflow-automator")
 
         # Database path — share with the daemon (use a file-based DB)
         import os
@@ -67,6 +89,10 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def _build_body(self) -> None:
         """Create the scrolled workflow list."""
+        # Main vertical layout
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.set_child(main_box)
+
         # Scrolled window wrapping the list box
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_vexpand(True)
@@ -80,7 +106,32 @@ class MainWindow(Gtk.ApplicationWindow):
         self._listbox.set_selection_mode(Gtk.SelectionMode.NONE)
 
         scrolled.set_child(self._listbox)
-        self.set_child(scrolled)
+        main_box.append(scrolled)
+
+        # Empty state placeholder
+        self._empty_state = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=8
+        )
+        self._empty_state.set_vexpand(True)
+        self._empty_state.set_valign(Gtk.Align.CENTER)
+        self._empty_state.set_halign(Gtk.Align.CENTER)
+        self._empty_state.add_css_class("empty-state")
+
+        empty_icon = Gtk.Label(label="⚡")
+        empty_icon.add_css_class("empty-icon")
+        self._empty_state.append(empty_icon)
+
+        empty_title = Gtk.Label(label="No Workflows Yet")
+        empty_title.set_markup("<b>No Workflows Yet</b>")
+        self._empty_state.append(empty_title)
+
+        empty_hint = Gtk.Label(
+            label='Click <b>+</b> above to create your first automation.'
+        )
+        empty_hint.set_use_markup(True)
+        self._empty_state.append(empty_hint)
+
+        main_box.append(self._empty_state)
 
     # ------------------------------------------------------------------
     # Refresh
@@ -96,6 +147,13 @@ class MainWindow(Gtk.ApplicationWindow):
             old_row = next_row
 
         # Query DB and build rows
+        _TRIGGER_SUBTITLES = {
+            "bluetooth": "When Bluetooth connects",
+            "power": "When power changes",
+            "schedule": "Scheduled",
+            "network": "When network changes",
+            "shell": "When command matches",
+        }
         workflows = get_all_workflows(self.conn)
         for wf in workflows:
             row = WorkflowRow(
@@ -104,7 +162,19 @@ class MainWindow(Gtk.ApplicationWindow):
                 on_edit=self._on_edit_workflow,
                 on_delete=self._on_delete_workflow,
             )
+            # Set trigger type icon and label
+            triggers = get_triggers_for_workflow(self.conn, wf.id)
+            if triggers:
+                ttype = triggers[0].type
+                row.set_trigger_icon(ttype)
+                row.set_trigger_label(
+                    _TRIGGER_SUBTITLES.get(ttype, f"When {ttype}")
+                )
             self._listbox.append(row)
+
+        # Toggle empty state
+        has_workflows = len(workflows) > 0
+        self._empty_state.set_visible(not has_workflows)
 
     # ------------------------------------------------------------------
     # Callbacks
