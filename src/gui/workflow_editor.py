@@ -260,8 +260,11 @@ class WorkflowEditorDialog(Gtk.Dialog):
     # ------------------------------------------------------------------
 
     def _clear_trigger_config(self):
-        for child in self.box_trigger_config.get_children():
+        child = self.box_trigger_config.get_first_child()
+        while child is not None:
+            next_child = child.get_next_sibling()
             child.unparent()
+            child = next_child
         self._trigger_config_widgets.clear()
 
     def _on_trigger_type_changed(self, dropdown, _param):
@@ -400,8 +403,12 @@ class WorkflowEditorDialog(Gtk.Dialog):
             t_idx = dd_type.get_selected()
             t = _ACTION_TYPES[t_idx] if 0 <= t_idx < len(_ACTION_TYPES) else ""
 
-            for child in cmd_container.get_children():
-                cmd_container.remove(child)
+            # Remove any existing child
+            existing = cmd_container.get_first_child()
+            while existing is not None:
+                nxt = existing.get_next_sibling()
+                cmd_container.remove(existing)
+                existing = nxt
 
             if t == "launch":
                 cmd_container.append(dd_app)
