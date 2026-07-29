@@ -3,7 +3,8 @@
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gtk, Gdk
 
 from src.db import get_db, init_db
 from src.gui.widgets import WorkflowRow
@@ -19,8 +20,8 @@ def _load_css():
     if not os.path.exists(css_path):
         return
     provider.load_from_path(css_path)
-    # Apply to default display only when available
-    display = Gtk.Widget.get_default()
+    # Apply to the default display
+    display = Gdk.Display.get_default()
     if display is not None:
         Gtk.StyleContext.add_provider_for_display(
             display,
