@@ -38,11 +38,17 @@ class EventBus:
         if trigger in self._triggers:
             self._triggers.remove(trigger)
 
-    def dispatch(self, event_type: str, event_data: dict) -> None:
-        """Dispatch an event to all registered triggers whose match() returns True."""
+    def dispatch(self, event_type: str, event_data: dict) -> list:
+        """Dispatch an event to all registered triggers whose match() returns True.
+
+        Returns a list of triggers that matched.
+        """
+        matched = []
         for trigger in self._triggers:
             if event_type in trigger.get_event_types():
-                trigger.match(event_data)
+                if trigger.match(event_data):
+                    matched.append(trigger)
+        return matched
 
     def setup_dbus_listeners(self) -> None:
         """Register D-Bus signal receivers for all triggers that provide event types.
@@ -86,8 +92,17 @@ class EventBus:
             }
             self.dispatch(signal_name, event_data)
 
-    def poll_triggers(self) -> None:
-        """Poll all triggers that support a poll() method (e.g. PowerTrigger)."""
+    def poll_triggers(self) -> list[dict]:
+        """Poll all triggers that support a poll() method (e.g. PowerTrigger).
+
+        Returns a list of event dicts from triggers whose state changed.
+        """
+        events = []
         for trigger in self._triggers:
             if hasattr(trigger, "poll"):
-                trigger.poll()
+                event = trigger.poll()
+                if event is not None:
+                    event["_trigger"] = trigger
+                    events.append(event)
+                    self.dispatch(event.get("type", "poll"), event)
+        return events

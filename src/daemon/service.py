@@ -198,7 +198,19 @@ class DaemonService:
     # ------------------------------------------------------------------ #
 
     def _poll_schedule_triggers(self) -> None:
-        """Check all registered schedule triggers and fire matched ones."""
+        """Check all registered triggers — schedule + power polling."""
+        # Run poll-based triggers (power, etc.) — dispatch returns matched triggers
+        poll_events = self.event_bus.poll_triggers()
+        for event in poll_events:
+            trigger = event.get("_trigger")
+            if trigger and hasattr(trigger, "workflow_id"):
+                self.logger.info(
+                    "Poll trigger '%s' fired for workflow id=%s",
+                    trigger.name(), trigger.workflow_id,
+                )
+                self._execute_workflow_actions(trigger.workflow_id)
+
+        # Check schedule triggers
         for trigger in self._triggers:
             if not hasattr(trigger, "check"):
                 continue

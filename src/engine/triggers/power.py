@@ -1,4 +1,6 @@
-from typing import Optional
+from typing import Any, Optional
+
+import os
 
 from src.engine.triggers.base import TriggerBase
 
@@ -30,17 +32,37 @@ class PowerTrigger(TriggerBase):
         except (FileNotFoundError, PermissionError):
             return False
 
+        # Also try alternative paths
+        import glob
+        for path in glob.glob("/sys/class/power_supply/*/type"):
+            try:
+                with open(path) as f:
+                    if f.read().strip() == "Mains":
+                        dir_path = os.path.dirname(path)
+                        with open(os.path.join(dir_path, "online")) as f2:
+                            return f2.read().strip() == "1"
+            except (FileNotFoundError, PermissionError, OSError):
+                continue
+        return False
+
     def _state_matches(self, is_plugged: bool) -> bool:
         target = self._config.get("state", "plugged")
         if target == "plugged":
             return is_plugged
         return not is_plugged
 
-    def poll(self) -> None:
-        """Poll the AC power state and dispatch events if changed."""
+    def poll(self) -> Optional[dict]:
+        """Poll the AC power state. Returns an event dict if state changed."""
         current = self._read_ac_online()
         if self._last_state is not None and current != self._last_state:
             self._last_state = current
+            return {
+                "type": "power_changed",
+                "online": current,
+            }
+        if self._last_state is None:
+            self._last_state = current
+        return None
 
     def match(self, event_data: dict) -> bool:
         """Check if the event's power state matches this trigger's config state.

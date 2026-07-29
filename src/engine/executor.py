@@ -72,10 +72,14 @@ class ActionExecutor:
             return {"success": False, "output": "", "error": str(e)}
 
     def _execute_launch(self, command: str, args: list) -> dict:
-        """Launch a desktop app via subprocess.Popen (non-blocking)."""
+        """Launch a desktop app via subprocess.Popen (non-blocking).
+
+        Uses shlex.split so flatpak / snap / env-prefixed cmds work.
+        """
+        import shlex
         try:
-            cmd = [command] + list(args)
-            proc = subprocess.Popen(cmd)
+            full_cmd = shlex.split(command)
+            proc = subprocess.Popen(full_cmd)
             return {
                 "success": True,
                 "output": f"Launched {command} with PID {proc.pid}",

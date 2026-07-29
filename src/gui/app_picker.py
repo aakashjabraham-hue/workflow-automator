@@ -49,9 +49,9 @@ def _read_desktop_file(full_path: str) -> AppInfo | None:
         # Remove quotes around the executable if needed
         exec_clean = exec_clean.strip('"').strip("'")
 
-        # Get just the command path
-        exec_parts = exec_clean.split()
-        exec_cmd_clean = exec_parts[0] if exec_parts else exec_clean
+        # Keep the ENTIRE command (not just the first word) so flatpak run,
+        # env VAR=val cmd, and similar multi-word exec lines work.
+        exec_cmd_clean = exec_clean
 
         return AppInfo(
             name=name,
