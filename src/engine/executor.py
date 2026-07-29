@@ -130,8 +130,11 @@ class ActionExecutor:
 
         Command format: "player_name|action"
         For 'Open URI', args[0] is the URI to open.
+
+        Retries up to 5 times with 1-second delays to give the player
+        time to start and register its MPRIS interface.
         """
-        import shlex
+        import time
 
         parts = command.split("|", 1)
         if len(parts) != 2:
@@ -139,28 +142,43 @@ class ActionExecutor:
 
         player, action = parts
 
-        try:
-            if action == "Open URI":
-                uri = args[0] if args else ""
-                if not uri:
-                    return {"success": False, "output": "", "error": "No URI specified"}
-                cmd = ["playerctl", "-p", player, "open", uri]
-            else:
-                act_lower = action.lower().replace("-", "")
-                cmd = ["playerctl", "-p", player, act_lower]
+        for attempt in range(5):
+            try:
+                if action == "Open URI":
+                    uri = args[0] if args else ""
+                    if not uri:
+                        return {"success": False, "output": "", "error": "No URI specified"}
+                    cmd = ["playerctl", "-p", player, "open", uri]
+                else:
+                    act_lower = action.lower().replace("-", "")
+                    cmd = ["playerctl", "-p", player, act_lower]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.TIMEOUT)
-            output = result.stdout + result.stderr
-            if result.returncode == 0:
-                return {"success": True, "output": output, "error": ""}
-            return {
-                "success": False,
-                "output": output,
-                "error": f"playerctl exited with code {result.returncode}: {result.stderr.strip()}",
-            }
-        except FileNotFoundError:
-            return {"success": False, "output": "", "error": "playerctl not found (install with: sudo apt install playerctl)"}
-        except subprocess.TimeoutExpired:
-            return {"success": False, "output": "", "error": "playerctl timed out"}
-        except OSError as e:
-            return {"success": False, "output": "", "error": str(e)}
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=self.TIMEOUT
+                )
+                output = result.stdout + result.stderr
+                if result.returncode == 0:
+                    return {"success": True, "output": output, "error": ""}
+
+                # "No players found" means the app hasn't started yet
+                if "No players found" in result.stderr and attempt < 4:
+                    time.sleep(1)
+                    continue
+
+                return {
+                    "success": False,
+                    "output": output,
+                    "error": f"playerctl exited with code {result.returncode}: {result.stderr.strip()}",
+                }
+            except FileNotFoundError:
+                return {
+                    "success": False,
+                    "output": "",
+                    "error": "playerctl not found (install with: sudo apt install playerctl)",
+                }
+            except subprocess.TimeoutExpired:
+                return {"success": False, "output": "", "error": "playerctl timed out"}
+            except OSError as e:
+                return {"success": False, "output": "", "error": str(e)}
+
+        return {"success": False, "output": "", "error": "Player never became available after 5 attempts"}
