@@ -112,6 +112,9 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self._build_ui()
         self._connect_signals()
 
+        # Build the initial trigger type's config fields (signal won't fire)
+        self._on_trigger_type_changed(self.dropdown_trigger, None)
+
         if workflow_id is not None:
             self._load_workflow(workflow_id)
 
@@ -722,7 +725,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
             transient_for=self,
             modal=True,
             text=message,
-            detail=None,
             message_type=Gtk.MessageType.ERROR,
             buttons=Gtk.ButtonsType.OK,
         )
@@ -733,8 +735,7 @@ class WorkflowEditorDialog(Gtk.Dialog):
         dlg = Gtk.MessageDialog(
             transient_for=self,
             modal=True,
-            text=title,
-            detail=message,
+            text=f"{title}\n\n{message}",
             message_type=Gtk.MessageType.INFO,
             buttons=Gtk.ButtonsType.OK,
         )
