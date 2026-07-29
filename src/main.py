@@ -75,7 +75,14 @@ def run_daemon(argv: list[str] | None = None) -> int:
             stream=sys.stdout if args.foreground else None,
         )
 
-    db_path = args.db if args.db else ":memory:"
+    import os
+
+    default_db = os.path.expanduser("~/.workflow-automator/workflows.db")
+    db_path = args.db if args.db else default_db
+
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
     daemon = DaemonService(db_path=db_path, verbose=args.verbose)
     daemon.start()
     return 0
