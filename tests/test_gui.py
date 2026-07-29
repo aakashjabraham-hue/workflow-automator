@@ -9,6 +9,16 @@ gi = pytest.importorskip("gi")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
+# Initialise Gtk — if no display is available, skip the GUI tests that create windows.
+import os
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk
+
+_gdk_init_ok = Gtk.init_check()
+_has_display = Gdk.Display.get_default() is not None
+if not (_gdk_init_ok and _has_display):
+    pytest.skip("No display available — skipping GUI window tests", allow_module_level=True)
+
 from src.db import init_db
 from src.gui.workflow_editor import WorkflowEditorDialog
 from src.models.workflow import Workflow, get_workflow

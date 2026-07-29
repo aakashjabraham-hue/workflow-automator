@@ -49,7 +49,6 @@ class MainWindow(Gtk.ApplicationWindow):
     def _build_header_bar(self) -> None:
         """Create the header bar with title and add button."""
         header = Gtk.HeaderBar()
-        header.set_title("Workflow Automator")
         header.set_show_title_buttons(True)
 
         # Add workflow button

@@ -29,7 +29,9 @@ src/workflow_automator.egg-info/SOURCES.txt
 src/workflow_automator.egg-info/dependency_links.txt
 src/workflow_automator.egg-info/requires.txt
 src/workflow_automator.egg-info/top_level.txt
+tests/test_daemon.py
 tests/test_db.py
 tests/test_executor.py
+tests/test_gui.py
 tests/test_models.py
 tests/test_triggers.py
