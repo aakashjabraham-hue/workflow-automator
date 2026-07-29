@@ -20,10 +20,14 @@ _ACTION_TYPES = ["shell", "launch", "notify"]
 def _build_trigger_config(trigger_type, widgets):
     """Return a config dict based on the currently-visible config widgets."""
     if trigger_type == "bluetooth":
-        return {
-            "device_name": widgets.get("bt_device", "").get_text().strip(),
-            "mac_pattern": widgets.get("bt_mac", "").get_text().strip(),
-        }
+        dd = widgets.get("bt_device_dropdown", None)
+        devices = widgets.get("_bt_devices", [])
+        if dd is not None and devices:
+            idx = dd.get_selected()
+            if 0 <= idx < len(devices):
+                name, mac = devices[idx]
+                return {"device_name": name, "mac_pattern": mac}
+        return {"device_name": "", "mac_pattern": ""}
     elif trigger_type == "power":
         idx = widgets.get("power_state", None)
         if idx is not None and hasattr(idx, "get_selected"):
@@ -47,10 +51,15 @@ def _build_trigger_config(trigger_type, widgets):
 def _populate_trigger_fields(trigger_type, widgets, config):
     """Fill in the dynamic config fields for the given trigger type."""
     if trigger_type == "bluetooth":
-        if "bt_device" in widgets:
-            widgets["bt_device"].set_text(config.get("device_name", ""))
-        if "bt_mac" in widgets:
-            widgets["bt_mac"].set_text(config.get("mac_pattern", ""))
+        dd = widgets.get("bt_device_dropdown", None)
+        devices = widgets.get("_bt_devices", [])
+        if dd is not None and devices:
+            device_name = config.get("device_name", "")
+            mac = config.get("mac_pattern", "")
+            for i, (dname, dmac) in enumerate(devices):
+                if dname == device_name or dmac == mac:
+                    dd.set_selected(i)
+                    break
     elif trigger_type == "power":
         state = config.get("state", "plugged")
         idx = ["plugged", "unplugged"].index(state) if state in ("plugged", "unplugged") else 0
@@ -300,15 +309,19 @@ class WorkflowEditorDialog(Gtk.Dialog):
         return row
 
     def _build_bt_fields(self):
-        w_device = Gtk.Entry()
-        w_device.set_placeholder_text("Device name or MAC pattern")
-        self._add_config_row("Device", w_device)
-        self._trigger_config_widgets["bt_device"] = w_device
+        from src.engine.triggers.bluetooth_devices import get_device_store
 
-        w_mac = Gtk.Entry()
-        w_mac.set_placeholder_text("MAC pattern (optional)")
-        self._add_config_row("MAC", w_mac)
-        self._trigger_config_widgets["bt_mac"] = w_mac
+        device_names, devices = get_device_store()
+        store = Gtk.StringList.new(device_names)
+        dd_device = Gtk.DropDown()
+        dd_device.set_model(store)
+        dd_device.set_hexpand(True)
+        dd_device.set_tooltip_text("Select a paired Bluetooth device")
+        if not devices:
+            dd_device.set_sensitive(False)
+        self._add_config_row("Device", dd_device)
+        self._trigger_config_widgets["bt_device_dropdown"] = dd_device
+        self._trigger_config_widgets["_bt_devices"] = devices
 
     def _build_power_fields(self):
         store = Gtk.StringList.new(["plugged", "unplugged"])
@@ -352,7 +365,12 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self._action_rows.append(row)
 
     def _build_action_row(self, action_type, command, args_str):
-        """Build a single action row.  Returns a dict with widget refs."""
+        """Build a single action row.  Returns a dict with widget refs.
+        
+        For notify: command=subject, args_str=body
+        For launch: command=exec_path
+        For shell: command=command_text
+        """
         from src.gui.app_picker import get_installed_apps
 
         outer = Gtk.Box(spacing=8, orientation=Gtk.Orientation.HORIZONTAL)
@@ -368,17 +386,17 @@ class WorkflowEditorDialog(Gtk.Dialog):
             dd_type.set_selected(_ACTION_TYPES.index(action_type))
         outer.append(dd_type)
 
-        # Command container — holds either a text entry or an app dropdown
+        # Command container — swaps content based on selected action type
         cmd_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         cmd_container.set_hexpand(True)
 
-        # Text entry for shell/notify commands
-        entry_cmd = Gtk.Entry()
-        entry_cmd.set_placeholder_text("command")
-        entry_cmd.set_text(command)
-        entry_cmd.set_hexpand(True)
+        # --- Shell: single text entry ---
+        entry_shell_cmd = Gtk.Entry()
+        entry_shell_cmd.set_placeholder_text("command")
+        entry_shell_cmd.set_text(command)
+        entry_shell_cmd.set_hexpand(True)
 
-        # App dropdown for launch type
+        # --- Launch: app dropdown ---
         _all_apps = get_installed_apps()
         _app_names = [a.name for a in _all_apps]
         app_store = Gtk.StringList.new(_app_names)
@@ -386,7 +404,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         dd_app.set_model(app_store)
         dd_app.set_size_request(220, -1)
         dd_app.set_hexpand(True)
-        # Auto-completion entry overlay
         dd_app.set_tooltip_text("Select an app to launch")
 
         # If command matches an app exec, pre-select it
@@ -398,8 +415,27 @@ class WorkflowEditorDialog(Gtk.Dialog):
         if selected_app_idx >= 0:
             dd_app.set_selected(selected_app_idx)
 
+        # --- Notify: Subject + Body entries ---
+        notify_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        notify_box.set_hexpand(True)
+
+        entry_notify_subject = Gtk.Entry()
+        entry_notify_subject.set_placeholder_text("Notification subject")
+
+        entry_notify_body = Gtk.Entry()
+        entry_notify_body.set_placeholder_text("Notification body")
+        entry_notify_body.set_hexpand(True)
+
+        # Pre-populate fields if loading an existing notify action
+        if action_type == "notify":
+            entry_notify_subject.set_text(command)
+            entry_notify_body.set_text(args_str)
+
+        notify_box.append(entry_notify_subject)
+        notify_box.append(entry_notify_body)
+
         def _on_action_type_changed(*_args):
-            """Swap between text entry and app dropdown based on action type."""
+            """Swap the command container content based on action type."""
             t_idx = dd_type.get_selected()
             t = _ACTION_TYPES[t_idx] if 0 <= t_idx < len(_ACTION_TYPES) else ""
 
@@ -412,8 +448,10 @@ class WorkflowEditorDialog(Gtk.Dialog):
 
             if t == "launch":
                 cmd_container.append(dd_app)
+            elif t == "notify":
+                cmd_container.append(notify_box)
             else:
-                cmd_container.append(entry_cmd)
+                cmd_container.append(entry_shell_cmd)
             cmd_container.show()
 
         dd_type.connect("notify::selected", _on_action_type_changed)
@@ -422,12 +460,6 @@ class WorkflowEditorDialog(Gtk.Dialog):
         _on_action_type_changed()
 
         outer.append(cmd_container)
-
-        entry_args = Gtk.Entry()
-        entry_args.set_placeholder_text("args (comma-separated)")
-        entry_args.set_text(args_str)
-        entry_args.set_hexpand(True)
-        outer.append(entry_args)
 
         btn_remove = Gtk.Button()
         btn_remove.set_icon_name("list-remove-symbolic")
@@ -438,12 +470,16 @@ class WorkflowEditorDialog(Gtk.Dialog):
         row_data = {
             "outer": outer,
             "type_dropdown": dd_type,
-            "command_entry": entry_cmd,
-            "args_entry": entry_args,
-            "remove_button": btn_remove,
             "cmd_container": cmd_container,
+            "remove_button": btn_remove,
+            # Shell
+            "shell_entry": entry_shell_cmd,
+            # Launch
             "app_dropdown": dd_app,
             "app_list": _all_apps,
+            # Notify
+            "notify_subject_entry": entry_notify_subject,
+            "notify_body_entry": entry_notify_body,
         }
 
         def _on_remove(btn):
@@ -553,17 +589,20 @@ class WorkflowEditorDialog(Gtk.Dialog):
                 if 0 <= act_type_idx < len(_ACTION_TYPES)
                 else ""
             )
-            # For "launch" type, get command from the app dropdown
             if act_type == "launch":
                 app_idx = row["app_dropdown"].get_selected()
                 if 0 <= app_idx < len(row["app_list"]):
                     command = row["app_list"][app_idx].exec_cmd
                 else:
-                    command = row["command_entry"].get_text().strip()
+                    command = ""
+                args = []
+            elif act_type == "notify":
+                command = row["notify_subject_entry"].get_text().strip()
+                body = row["notify_body_entry"].get_text().strip()
+                args = [body] if body else []
             else:
-                command = row["command_entry"].get_text().strip()
-            args_raw = row["args_entry"].get_text().strip()
-            args = [p.strip() for p in args_raw.split(",")] if args_raw else []
+                command = row["shell_entry"].get_text().strip()
+                args = []
             actions.append(
                 {"type": act_type, "command": command, "args": args}
             )

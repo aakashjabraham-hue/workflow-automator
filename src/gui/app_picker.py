@@ -24,7 +24,7 @@ _cache = None
 def _read_desktop_file(full_path: str) -> AppInfo | None:
     """Parse a single .desktop file and return an AppInfo, or None if invalid."""
     try:
-        cp = configparser.ConfigParser()
+        cp = configparser.ConfigParser(interpolation=None)
         cp.read(full_path, encoding="utf-8")
         if not cp.has_section("Desktop Entry"):
             return None
