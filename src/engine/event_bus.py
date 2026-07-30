@@ -8,6 +8,7 @@ class EventBus:
     Usage:
         bus = EventBus.get_instance()
         bus.register_trigger(my_trigger)
+        bus.on_match(my_callback)    # called when a trigger matches during dispatch
         bus.dispatch("DevicePropertyChanged", {"device": "MyHeadphones", "Connected": True})
     """
 
@@ -18,6 +19,7 @@ class EventBus:
         self._triggers: list = []
         self._dbus_bus = None
         self._dbus_signal_matches: list = []
+        self._match_callbacks: list = []
 
     @classmethod
     def get_instance(cls) -> "EventBus":
@@ -38,6 +40,14 @@ class EventBus:
         if trigger in self._triggers:
             self._triggers.remove(trigger)
 
+    def on_match(self, callback) -> None:
+        """Register a callback invoked whenever a trigger matches during dispatch.
+
+        The callback receives the matched trigger instance and the event_data dict.
+        """
+        if callback not in self._match_callbacks:
+            self._match_callbacks.append(callback)
+
     def dispatch(self, event_type: str, event_data: dict) -> list:
         """Dispatch an event to all registered triggers whose match() returns True.
 
@@ -48,6 +58,12 @@ class EventBus:
             if event_type in trigger.get_event_types():
                 if trigger.match(event_data):
                     matched.append(trigger)
+                    # Notify match callbacks so the daemon can execute actions
+                    for cb in self._match_callbacks:
+                        try:
+                            cb(trigger, event_data)
+                        except Exception:
+                            pass
         return matched
 
     def setup_dbus_listeners(self) -> None:
@@ -76,12 +92,15 @@ class EventBus:
                 signal_names.add(sig)
 
         for signal_name in signal_names:
-            match_rule = f"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'"
             self._dbus_bus.add_signal_receiver(
                 self._on_dbus_signal,
                 signal_name="PropertiesChanged",
                 dbus_interface="org.freedesktop.DBus.Properties",
                 bus_name="org.bluez",
+                path_keyword="path",
+                sender_keyword="sender",
+                interface_keyword="interface",
+                member_keyword="member",
             )
             self._dbus_signal_matches.append(signal_name)
 

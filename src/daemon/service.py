@@ -86,6 +86,10 @@ class DaemonService:
         # Try to set up D-Bus signal listeners.
         self.event_bus.setup_dbus_listeners()
 
+        # Subscribe to trigger-match callbacks so D-Bus-driven matches
+        # (e.g. Bluetooth) actually execute the workflow actions.
+        self._setup_match_callback()
+
     # ------------------------------------------------------------------ #
     #  Lifecycle
     # ------------------------------------------------------------------ #
@@ -126,6 +130,23 @@ class DaemonService:
                 row.type,
                 workflow.name,
             )
+
+    def _setup_match_callback(self) -> None:
+        """Register a callback so D-Bus-driven matches execute their workflow actions.
+
+        Without this, ``EventBus.dispatch()`` returns matched triggers but
+        nobody triggers action execution.
+        """
+        def _on_match(trigger, event_data) -> None:
+            wf_id = getattr(trigger, "workflow_id", None)
+            if wf_id is not None:
+                self.logger.info(
+                    "Match callback: executing actions for workflow id=%s "
+                    "(trigger=%s)", wf_id, trigger.name(),
+                )
+                self._execute_workflow_actions(wf_id)
+
+        self.event_bus.on_match(_on_match)
 
     def start(self) -> None:
         """Start the daemon main loop (D-Bus handling + schedule polling)."""

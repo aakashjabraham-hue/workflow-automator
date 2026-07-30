@@ -29,12 +29,14 @@ class BluetoothTrigger(TriggerBase):
             - 'mac_address' or 'object_path' for MAC-based matching
         """
         changed = event_data.get("changed_properties", {})
+        # NB: D-Bus sends dbus.Boolean which is NOT identical to Python's
+        # True via the ``is`` operator — always use ``==`` or convert to
+        # native type with bool().
         connected = changed.get("Connected")
-
         if connected is None:
             connected = event_data.get("Connected")
 
-        if connected is not True:
+        if connected != True:  # noqa: E712
             return False
 
         device_name = event_data.get("device") or event_data.get("device_name", "")
