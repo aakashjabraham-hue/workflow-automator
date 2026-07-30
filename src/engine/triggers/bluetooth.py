@@ -1,3 +1,4 @@
+import re
 from src.engine.triggers.base import TriggerBase
 
 
@@ -25,6 +26,7 @@ class BluetoothTrigger(TriggerBase):
             - 'changed_properties' dict with 'Connected' key (from D-Bus PropertiesChanged)
             - 'Connected' key directly at top level
             - 'device' or 'device_name' key to match against config
+            - 'mac_address' or 'object_path' for MAC-based matching
         """
         changed = event_data.get("changed_properties", {})
         connected = changed.get("Connected")
@@ -38,12 +40,22 @@ class BluetoothTrigger(TriggerBase):
         device_name = event_data.get("device") or event_data.get("device_name", "")
         mac_address = event_data.get("mac_address", "")
 
+        # Extract MAC from D-Bus object_path if available
+        # e.g. /org/bluez/hci0/dev_XX_XX_XX_XX_XX_XX
+        object_path = event_data.get("object_path", "")
+        if not mac_address and object_path:
+            mac_match_path = re.search(r'dev_([0-9A-Fa-f_]+)', object_path)
+            if mac_match_path:
+                raw = mac_match_path.group(1)
+                mac_address = ":".join(raw.split("_")).upper()
+
         device_name_match = (
             self._config.get("device_name") is not None
             and device_name == self._config.get("device_name")
         )
         mac_match = (
             self._config.get("mac_pattern") is not None
+            and mac_address
             and self._config.get("mac_pattern") in mac_address
         )
 

@@ -85,16 +85,37 @@ class EventBus:
             )
             self._dbus_signal_matches.append(signal_name)
 
-    def _on_dbus_signal(self, sender: str, iface: str, signal_name: str, params: tuple) -> None:
-        """Callback invoked when a D-Bus signal is received."""
-        if len(params) >= 2:
-            iface_name = params[0]
-            changed_props = params[1] if len(params) > 1 else {}
-            event_data = {
-                "interface": iface_name,
-                "changed_properties": changed_props,
-            }
-            self.dispatch(signal_name, event_data)
+    def _on_dbus_signal(self, *args, **kwargs) -> None:
+        """Callback invoked when a D-Bus PropertiesChanged signal is received.
+
+        ``org.freedesktop.DBus.Properties.PropertiesChanged`` signature::
+
+            sa{sv}as
+
+        …where the three positional args are:
+            1. interface name  (s)
+            2. changed properties  (a{sv})
+            3. invalidated properties  (as)
+
+        Keyword args include the object *path* (the device path), *sender*
+        (bus name), and *interface* / *member* — all injected by dbus-python.
+        """
+        if len(args) < 2:
+            return
+
+        iface_name = str(args[0]) if args[0] else ""
+        changed_props = dict(args[1]) if len(args) > 1 and args[1] else {}
+        # args[2] = invalidated properties (not needed here)
+
+        # Extract the object path so we know which device changed
+        object_path = kwargs.get("path", "")
+
+        event_data = {
+            "interface": iface_name,
+            "changed_properties": changed_props,
+            "object_path": object_path,
+        }
+        self.dispatch("PropertiesChanged", event_data)
 
     def poll_triggers(self) -> list[dict]:
         """Poll all triggers that support a poll() method (e.g. PowerTrigger).

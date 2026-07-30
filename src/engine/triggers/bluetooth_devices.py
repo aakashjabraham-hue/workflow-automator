@@ -9,16 +9,32 @@ _cache = None
 
 
 def _parse_bluetoothctl() -> list[PairedDevice]:
-    """Run bluetoothctl paired-devices and parse the output."""
-    try:
-        result = subprocess.run(
-            ["bluetoothctl", "paired-devices"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        output = result.stdout
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+    """Run bluetoothctl devices Paired and parse the output.
+
+    Supports both bluetoothctl 5.85+ (``devices Paired``) and older
+    versions (``paired-devices``).
+    """
+    candidates = [
+        ["bluetoothctl", "devices", "Paired"],
+        ["bluetoothctl", "paired-devices"],
+    ]
+    output = ""
+    for cmd in candidates:
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            # Accept successful run OR a partial stdout with "Device" lines
+            if result.returncode == 0 or "Device" in result.stdout:
+                output = result.stdout
+                break
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            continue
+
+    if not output:
         return []
 
     devices: list[PairedDevice] = []
