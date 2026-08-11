@@ -1,8 +1,10 @@
 """Workflow Automator — entry point.
 
 Usage:
-    python -m src.main                       # launch the GTK4 GUI (default)
-    python -m src.main dashboard             # same as above (explicit)
+    python -m src.main                       # launch the GTK4 desktop app (default)
+    python -m src.main desktop               # same as above (explicit)
+    python -m src.main dashboard             # serve the web dashboard on localhost
+    python -m src.main dashboard --port 9000 # web dashboard on a specific port
     python -m src.main daemon                # run the background daemon
     python -m src.main daemon --verbose      # daemon with debug logging
     python -m src.main update                # pull the latest from GitHub
@@ -30,9 +32,16 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default=None,
-        choices=["dashboard", "daemon", "install", "update", "uninstall", "version"],
-        help="What to do: dashboard (open the app), daemon, install, "
-             "update, uninstall, version.",
+        choices=["dashboard", "desktop", "daemon", "install", "update", "uninstall", "version"],
+        help="What to do: desktop (open the desktop app), dashboard (open the "
+             "web dashboard on localhost), daemon, install, update, uninstall, version.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="(dashboard only) Preferred port for the web dashboard "
+             "(default 8899; next free port is used if busy).",
     )
     parser.add_argument(
         "--daemon",
@@ -83,19 +92,20 @@ def _read_version() -> str:
 
 
 def run_gui(argv: list[str] | None = None) -> int:
-    """Launch the GTK4 GUI application (the automation dashboard)."""
+    """Launch the GTK4 desktop application (the automation dashboard)."""
     try:
         import gi  # noqa: F401
 
         gi.require_version("Gtk", "4.0")
     except (ImportError, ValueError) as exc:
         print(
-            "  ⚠️   The dashboard GUI needs GTK4 (PyGObject).\n"
+            "  ⚠️   The desktop app needs GTK4 (PyGObject).\n"
             f"       ({exc})\n"
             "       On Linux: sudo apt install python3-gi gir1.2-gtk-4.0\n"
             "       On macOS: brew install pygobject3 gtk4\n"
             "       On Windows: install GTK4 for Python (see README).\n"
-            "       Headless automation still works: workflow-automator daemon",
+            "       No GUI needed? Use: workflow-automator dashboard (web)\n"
+            "       or: workflow-automator daemon (headless)",
             file=sys.stderr,
         )
         return 1
@@ -104,6 +114,15 @@ def run_gui(argv: list[str] | None = None) -> int:
 
     app = WorkflowAutomatorApp()
     return app.run(argv)
+
+
+def run_dashboard(argv: list[str] | None = None) -> int:
+    """Serve the web dashboard on localhost (same UI as the desktop app)."""
+    from src.dashboard import run_dashboard as _serve
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return _serve(db_path=args.db, port=args.port)
 
 
 def run_daemon(argv: list[str] | None = None) -> int:
@@ -148,8 +167,10 @@ def main(argv: list[str] | None = None) -> int:
 
     command = args.command
 
-    if command in (None, "dashboard"):
+    if command in (None, "desktop"):
         return run_gui(argv)
+    if command == "dashboard":
+        return run_dashboard(argv)
     if command == "daemon":
         return run_daemon(argv)
     if command == "version":

@@ -496,7 +496,8 @@ def cmd_install(skip_download: bool = False) -> None:
     # Summary
     print()
     print(c("  All set! Quick commands:", Style.BOLD))
-    print(c("    workflow-automator dashboard     # Open the automation app", Style.CYAN))
+    print(c("    workflow-automator desktop       # Open the desktop app", Style.CYAN))
+    print(c("    workflow-automator dashboard     # Open the web dashboard (localhost)", Style.CYAN))
     print(c("    workflow-automator daemon        # Run the background daemon", Style.CYAN))
     print(c("    workflow-automator update        # Update to latest version", Style.CYAN))
     print(c("    workflow-automator version       # Show installed version", Style.CYAN))

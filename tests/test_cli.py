@@ -8,9 +8,38 @@ from src.self_update import is_newer, read_version, version_key
 
 def test_parser_accepts_all_subcommands():
     parser = build_parser()
-    for cmd in ["dashboard", "daemon", "install", "update", "uninstall", "version"]:
+    for cmd in ["dashboard", "desktop", "daemon", "install", "update", "uninstall", "version"]:
         args = parser.parse_args([cmd])
         assert args.command == cmd
+
+
+def test_parser_dashboard_port_flag():
+    args = build_parser().parse_args(["dashboard", "--port", "9000"])
+    assert args.command == "dashboard"
+    assert args.port == 9000
+
+
+def test_main_desktop_dispatches_to_gui(monkeypatch):
+    from src.main import main
+
+    monkeypatch.setattr("src.main.run_gui", lambda argv: 0)
+    assert main(["desktop"]) == 0
+    # bare invocation still opens the desktop app
+    assert main([]) == 0
+
+
+def test_main_dashboard_dispatches_to_web_server(monkeypatch):
+    from src.main import main
+
+    calls = {}
+
+    def fake_run_dashboard(argv):
+        calls["argv"] = argv
+        return 0
+
+    monkeypatch.setattr("src.main.run_dashboard", fake_run_dashboard)
+    assert main(["dashboard", "--port", "9010"]) == 0
+    assert calls["argv"] == ["dashboard", "--port", "9010"]
 
 
 def test_parser_preserves_backward_compat_flags():

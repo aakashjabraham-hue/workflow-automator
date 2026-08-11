@@ -54,8 +54,10 @@ sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-4.0 playerctl
 
 | Command | What it does |
 |---------|--------------|
-| `workflow-automator` | Opens the automation dashboard (GUI) |
-| `workflow-automator dashboard` | Same as above — explicit |
+| `workflow-automator` | Opens the desktop app (GTK4 GUI) |
+| `workflow-automator desktop` | Same as above — explicit |
+| `workflow-automator dashboard` | Opens the web dashboard in your browser (localhost) |
+| `workflow-automator dashboard --port 9000` | Web dashboard on a specific port |
 | `workflow-automator daemon` | Runs the background daemon (`--foreground --verbose` for testing) |
 | `workflow-automator update` | Pulls the latest from GitHub and restarts the daemon if running |
 | `workflow-automator install` | Installs/repairs the CLI (downloads latest from GitHub) |
@@ -66,6 +68,33 @@ sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-4.0 playerctl
 In development mode (running from the repo checkout), `update` runs
 `git pull` — in installed mode it downloads the latest release from GitHub.
 `update` never downgrades and never re-downloads when you're already current.
+
+---
+
+## Web Dashboard
+
+`workflow-automator dashboard` serves the same workflow-management UI as the
+desktop app, but in your browser over localhost — no GUI toolkit needed. It
+edits the exact same database the desktop app and the daemon use, so changes
+show up everywhere instantly.
+
+```bash
+workflow-automator dashboard
+# → serving at http://127.0.0.1:8899  (opens your browser automatically)
+```
+
+- **Zero extra dependencies** — built on Python's standard library
+  (`http.server`), no npm, no frameworks, no install step.
+- **Port** defaults to `8899`; if it's busy the next free port is used.
+  Force one with `--port`:
+  ```bash
+  workflow-automator dashboard --port 9000
+  ```
+- **Everything the desktop app does**: create / edit / delete workflows,
+  configure triggers (Bluetooth, power, schedule/cron, network, shell) and
+  actions (shell, launch, notify, media), toggle workflows on/off.
+- Works headless: `ssh` into a machine and `dashboard` still serves — just
+  open the printed URL yourself.
 
 ---
 
@@ -224,8 +253,9 @@ workflow-automator/
 
 | | Linux | macOS | Windows |
 |--|-------|-------|---------|
-| **CLI** (`dashboard`, `daemon`, `update`, `install`, `uninstall`, `version`) | ✅ | ✅ | ✅ |
-| **Dashboard GUI** (GTK4) | ✅ | via `brew install pygobject3 gtk4` | via GTK for Python |
+| **CLI** (`desktop`, `dashboard`, `daemon`, `update`, `install`, `uninstall`, `version`) | ✅ | ✅ | ✅ |
+| **Desktop app** (GTK4) | ✅ | via `brew install pygobject3 gtk4` | via GTK for Python |
+| **Web dashboard** (localhost, no extra deps) | ✅ | ✅ | ✅ |
 | **Daemon autostart** | systemd user service | launchd LaunchAgent | Task Scheduler |
 | **Bluetooth / Power / Network triggers** | ✅ | — (no BlueZ/sysfs) | — |
 | **Schedule trigger (cron)** | ✅ | ✅ | ✅ |
