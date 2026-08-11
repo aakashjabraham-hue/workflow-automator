@@ -10,6 +10,7 @@ from src.db import get_db, init_db
 from src.gui.widgets import WorkflowRow
 from src.models.workflow import Workflow, get_all_workflows
 from src.models.trigger import get_triggers_for_workflow
+from src.models.action import get_actions_for_workflow
 
 
 def _load_css():
@@ -39,7 +40,7 @@ class MainWindow(Gtk.ApplicationWindow):
         _load_css()
 
         self.set_title("Workflow Automator")
-        self.set_default_size(500, 400)
+        self.set_default_size(680, 560)
         self.add_css_class("workflow-automator")
 
         # Database path — share with the daemon (use a file-based DB)
@@ -81,6 +82,12 @@ class MainWindow(Gtk.ApplicationWindow):
         add_btn.add_css_class("suggested-action")
         add_btn.connect("clicked", self._on_add_workflow)
         header.pack_end(add_btn)
+
+        # Workflow count (left side — mirrors the web toolbar count)
+        self.header_count = Gtk.Label(label="")
+        self.header_count.add_css_class("header-count")
+        self.header_count.set_halign(Gtk.Align.START)
+        header.pack_start(self.header_count)
 
         self.set_titlebar(header)
 
@@ -127,7 +134,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self._empty_state.append(empty_title)
 
         empty_hint = Gtk.Label(
-            label='Click <b>+</b> above to create your first automation.'
+            label="Click <b>＋ New Workflow</b> to create your first automation."
         )
         empty_hint.set_use_markup(True)
         self._empty_state.append(empty_hint)
@@ -165,17 +172,28 @@ class MainWindow(Gtk.ApplicationWindow):
             )
             # Set trigger type icon and label
             triggers = get_triggers_for_workflow(self.conn, wf.id)
-            if triggers:
-                ttype = triggers[0].type
-                row.set_trigger_icon(ttype)
+            # The schedule trigger is a secondary field — prefer the main trigger.
+            main_trig = next((t for t in triggers if t.type != "schedule"), None)
+            ttype = (main_trig or triggers[0]).type if triggers else None
+            if ttype:
+                row.set_trigger_type(ttype)
                 row.set_trigger_label(
                     _TRIGGER_SUBTITLES.get(ttype, f"When {ttype}")
                 )
+            actions = get_actions_for_workflow(self.conn, wf.id)
+            row.set_actions_count(len(actions))
             self._listbox.append(row)
 
         # Toggle empty state
         has_workflows = len(workflows) > 0
         self._empty_state.set_visible(not has_workflows)
+
+        # Update the header count (mirrors the web toolbar)
+        enabled_count = sum(1 for w in workflows if w.enabled)
+        wf_word = "workflow" if len(workflows) == 1 else "workflows"
+        self.header_count.set_label(
+            f"{len(workflows)} {wf_word} · {enabled_count} enabled"
+        )
 
     # ------------------------------------------------------------------
     # Callbacks

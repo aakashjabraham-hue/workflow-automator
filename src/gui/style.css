@@ -1,260 +1,363 @@
-/* ── Workflow Automator — Custom Stylesheet ─────────────────────── */
-/* Modern dark theme inspired by GNOME Builder / Code-style UIs     */
+/* ────────────────────────────────────────────────────────────────────
+   Workflow Automator — GTK stylesheet (Linear design language)
+   Mirrors the web dashboard (src/dashboard_ui.py): same palette, same
+   cards, same chips, same buttons, same switches. The two UIs share
+   one visual identity.
+
+   Palette (Linear):
+     bg          #08090a        panel    #0f1011
+     surface     #191a1b        surface2 #28282c
+     text        #f7f8f8        text2    #d0d6e0
+     text3       #8a8f98        text4    #62666d
+     accent      #5e6ad2        accent+  #7170ff / #828fff
+     green       #27a644        red      #f26d6d
+   ──────────────────────────────────────────────────────────────────── */
 
 /* ── Global ─────────────────────────────────────────────────────── */
 window.workflow-automator {
-    background-color: #1e1e2e;
-    color: #cdd6f4;
+    background-color: #08090a;
+    color: #f7f8f8;
+}
+
+/* GTK's light theme paints listbox/scrolledwindow backgrounds white —
+   pin every surface under the main window to the Linear page color. */
+window.workflow-automator scrolledwindow,
+window.workflow-automator scrolledwindow viewport,
+window.workflow-automator listbox {
+    background: #08090a;
+}
+
+window.workflow-automator listbox row {
+    background: transparent;
 }
 
 window.workflow-automator label {
-    color: #cdd6f4;
+    color: #d0d6e0;
 }
 
 window.workflow-automator .dim-label {
-    color: #6c7086;
-    font-size: 0.85em;
+    color: #8a8f98;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding-bottom: 2px;
 }
 
 /* ── Header Bar ─────────────────────────────────────────────────── */
 window.workflow-automator headerbar {
-    background: linear-gradient(180deg, #181825 0%, #11111b 100%);
-    border-bottom: 1px solid #313244;
-    padding: 4px 8px;
-    min-height: 48px;
+    background: #0f1011;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 2px 12px;
+    min-height: 46px;
 }
 
 window.workflow-automator headerbar label.title {
-    font-size: 1.1em;
-    font-weight: 700;
-    color: #cdd6f4;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: #f7f8f8;
+}
+
+window.workflow-automator headerbar .header-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: #8a8f98;
+    margin-left: 10px;
 }
 
 /* ── Workflow List ──────────────────────────────────────────────── */
 
-/* Empty state */
+/* Empty state (dashed container, like the web empty state) */
 window.workflow-automator .empty-state {
-    padding: 60px 20px;
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin: 24px 16px;
+    padding: 48px 20px;
 }
 
 window.workflow-automator .empty-state label {
-    font-size: 1.2em;
-    color: #585b70;
+    color: #8a8f98;
 }
 
 window.workflow-automator .empty-state .empty-icon {
-    font-size: 3em;
+    font-size: 40px;
     margin-bottom: 12px;
 }
 
-/* Workflow row cards */
-workflow-row {
-    background: #1e1e2e;
-    border: none;
-    transition: background 0.15s ease;
-}
-
-workflow-row:hover {
-    background: #313244;
-}
-
-workflow-row:selected {
-    background: #45475a;
-}
-
-workflow-row .card {
-    background: #181825;
-    border-radius: 10px;
-    margin: 4px 8px;
-    padding: 8px 12px;
-    border: 1px solid #313244;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    transition: all 0.15s ease;
-}
-
-workflow-row:hover .card {
-    border-color: #45475a;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-}
-
-workflow-row .card .workflow-icon {
-    font-size: 1.5em;
-    margin-right: 8px;
-}
-
-workflow-row .card .workflow-name {
-    font-size: 1em;
+window.workflow-automator .empty-state .empty-title {
+    font-size: 15px;
     font-weight: 600;
-    color: #cdd6f4;
+    color: #d0d6e0;
 }
 
-workflow-row .card .workflow-trigger-label {
-    font-size: 0.8em;
-    color: #6c7086;
-    padding-top: 2px;
+/* Workflow cards (identical to web .card) */
+window.workflow-automator .workflow-row {
+    background: transparent;
+    border: none;
 }
 
-workflow-row .card .status-dot {
-    min-width: 10px;
-    min-height: 10px;
-    border-radius: 5px;
-    margin: 6px;
+window.workflow-automator .workflow-row .card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin: 6px 16px;
+    padding: 14px 16px;
+    transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-workflow-row .card .status-dot.enabled {
-    background: #a6e3a1;
+window.workflow-automator .workflow-row:hover .card {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
-workflow-row .card .status-dot.disabled {
-    background: #45475a;
+window.workflow-automator .workflow-row .card.disabled {
+    opacity: 0.55;
+}
+
+window.workflow-automator .workflow-row .card .workflow-icon {
+    font-size: 17px;
+}
+
+window.workflow-automator .workflow-row .card .workflow-name {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.15px;
+    color: #f7f8f8;
+}
+
+/* Chips (pill labels, same as web .chip) */
+window.workflow-automator .workflow-row .card .chip {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: transparent;
+    color: #d0d6e0;
+    border: 1px solid #23252a;
+}
+
+window.workflow-automator .workflow-row .card .chip.chip-off {
+    color: #62666d;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+window.workflow-automator button {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid #24282c;
+    border-radius: 6px;
+    color: #e2e4e7;
+    font-weight: 500;
+    padding: 4px 14px;
+    min-height: 30px;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+window.workflow-automator button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #34343a;
+}
+
+window.workflow-automator button:active {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+window.workflow-automator button.suggested-action {
+    background: #5e6ad2;
+    border-color: transparent;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+window.workflow-automator button.suggested-action:hover {
+    background: #828fff;
+}
+
+window.workflow-automator button.destructive-action {
+    background: transparent;
+    border-color: rgba(242, 109, 109, 0.25);
+    color: #f26d6d;
+}
+
+window.workflow-automator button.destructive-action:hover {
+    background: rgba(242, 109, 109, 0.08);
+    border-color: rgba(242, 109, 109, 0.5);
+}
+
+/* Icon buttons (edit / delete on cards) */
+window.workflow-automator button.flat {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 4px;
+    min-height: 26px;
+    min-width: 26px;
+}
+
+window.workflow-automator button.flat:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+window.workflow-automator button.flat.destructive-action {
+    border-color: rgba(242, 109, 109, 0.2);
+    color: #f26d6d;
+}
+
+/* ── Switch (same track colors as web) ──────────────────────────── */
+window.workflow-automator switch {
+    background: #28282c;
+    border-radius: 999px;
+    min-width: 36px;
+    min-height: 20px;
+    transition: background 0.18s ease;
+}
+
+window.workflow-automator switch:checked {
+    background: #5e6ad2;
+}
+
+window.workflow-automator switch slider {
+    background: #f7f8f8;
+    border-radius: 999px;
+    min-width: 14px;
+    min-height: 14px;
+    margin: 3px;
 }
 
 /* ── Editor Dialog ──────────────────────────────────────────────── */
-
-dialog.workflow-editor {
-    background: #1e1e2e;
+.workflow-editor,
+.workflow-editor box,
+.workflow-editor frame,
+.workflow-editor scrolledwindow,
+.workflow-editor viewport {
+    background: #191a1b;
 }
 
-dialog.workflow-editor label.title {
-    font-size: 1.1em;
-    font-weight: 700;
-    color: #cdd6f4;
+.workflow-editor label {
+    color: #d0d6e0;
 }
 
-dialog.workflow-editor frame {
-    background: #181825;
-    border: 1px solid #313244;
+.workflow-editor label.title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.15px;
+    color: #f7f8f8;
+}
+
+/* Section panels (Trigger / Actions / Schedule) */
+.workflow-editor frame {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     padding: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-dialog.workflow-editor frame > border {
+.workflow-editor frame > border {
     border: none;
 }
 
-dialog.workflow-editor frame > label {
-    font-weight: 700;
-    font-size: 0.9em;
-    color: #a6adc8;
-    padding: 4px 8px;
-    background: #11111b;
-    border-radius: 8px 8px 0 0;
+.workflow-editor frame > label {
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #8a8f98;
+    padding: 8px 12px 0 12px;
 }
 
-dialog.workflow-editor entry {
-    background: #313244;
-    color: #cdd6f4;
-    border: 1px solid #45475a;
+/* Inputs */
+.workflow-editor entry,
+.workflow-editor textview {
+    background: rgba(255, 255, 255, 0.02);
+    color: #d0d6e0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     padding: 6px 10px;
-    min-height: 32px;
-}
-
-dialog.workflow-editor entry:focus {
-    border-color: #89b4fa;
-    box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.3);
-}
-
-dialog.workflow-editor entry:disabled {
-    background: #262637;
-    color: #585b70;
-}
-
-dialog.workflow-editor switch {
-    margin: 4px;
-}
-
-dialog.workflow-editor button.suggested-action {
-    background: #89b4fa;
-    color: #1e1e2e;
-    font-weight: 700;
-    border-radius: 8px;
-    padding: 6px 18px;
-    transition: all 0.15s ease;
-}
-
-dialog.workflow-editor button.suggested-action:hover {
-    background: #b4d0fb;
-}
-
-dialog.workflow-editor button.destructive-action {
-    background: #f38ba8;
-    color: #1e1e2e;
-    font-weight: 700;
-    border-radius: 8px;
-    padding: 6px 18px;
-}
-
-dialog.workflow-editor button.destructive-action:hover {
-    background: #f5a0b8;
-}
-
-dialog.workflow-editor button.flat {
-    background: transparent;
-    color: #a6adc8;
-    border-radius: 6px;
-    padding: 4px 8px;
-}
-
-dialog.workflow-editor button.flat:hover {
-    background: #313244;
-}
-
-dialog.workflow-editor dropdown {
-    background: #313244;
-    color: #cdd6f4;
-    border: 1px solid #45475a;
-    border-radius: 6px;
-    min-height: 32px;
-}
-
-dialog.workflow-editor dropdown:hover {
-    border-color: #89b4fa;
-}
-
-/* Action rows inside the editor */
-dialog.workflow-editor .action-row {
-    background: #262637;
-    border-radius: 6px;
-    padding: 6px 8px;
-    margin: 2px 0;
-    border: 1px solid #313244;
-}
-
-dialog.workflow-editor .action-row:hover {
-    border-color: #45475a;
-}
-
-/* ── Message Dialogs ────────────────────────────────────────────── */
-messagedialog {
-    background: #1e1e2e;
-}
-
-messagedialog label {
-    color: #cdd6f4;
-}
-
-messagedialog button {
-    border-radius: 8px;
-}
-
-/* ── Scrollbars ─────────────────────────────────────────────────── */
-scrollbar {
-    background: #11111b;
-}
-
-scrollbar slider {
-    background: #45475a;
-    border-radius: 4px;
-    min-width: 6px;
     min-height: 30px;
 }
 
-scrollbar slider:hover {
-    background: #585b70;
+.workflow-editor entry:focus,
+.workflow-editor textview:focus {
+    border-color: #7170ff;
+    box-shadow: 0 0 0 3px rgba(113, 112, 255, 0.2);
+}
+
+.workflow-editor entry:disabled {
+    background: rgba(255, 255, 255, 0.01);
+    color: #62666d;
+}
+
+/* DropDowns */
+.workflow-editor dropdown button {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    color: #d0d6e0;
+    font-weight: 500;
+    min-height: 30px;
+    padding: 0 10px;
+}
+
+.workflow-editor dropdown button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Editor action rows */
+.workflow-editor listbox row {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin: 4px 0;
+    padding: 8px;
+}
+
+/* Dialog buttons inherit the window button styles via dialog selector */
+.workflow-editor button {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid #24282c;
+    border-radius: 6px;
+    color: #e2e4e7;
+    font-weight: 500;
+    padding: 4px 14px;
+    min-height: 30px;
+}
+
+.workflow-editor button:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.workflow-editor button.suggested-action {
+    background: #5e6ad2;
+    border-color: transparent;
+    color: #ffffff;
+}
+
+.workflow-editor button.suggested-action:hover {
+    background: #828fff;
+}
+
+.workflow-editor button.destructive-action {
+    background: transparent;
+    border-color: rgba(242, 109, 109, 0.25);
+    color: #f26d6d;
+}
+
+.workflow-editor button.destructive-action:hover {
+    background: rgba(242, 109, 109, 0.08);
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────── */
+window.workflow-automator scrolledwindow scrollbar {
+    background: transparent;
+}
+
+window.workflow-automator scrolledwindow scrollbar slider {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    min-width: 6px;
+    min-height: 6px;
+}
+
+window.workflow-automator scrolledwindow scrollbar slider:hover {
+    background: rgba(255, 255, 255, 0.14);
 }

@@ -109,6 +109,7 @@ class WorkflowEditorDialog(Gtk.Dialog):
         self._loading = False
 
         self.add_css_class("workflow-editor")
+        self.add_css_class("workflow-automator")
 
         self._build_ui()
         self._connect_signals()

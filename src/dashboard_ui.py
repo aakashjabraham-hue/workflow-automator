@@ -23,152 +23,181 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Workflow Automator — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --panel-2: #1e222b;
-    --border: #2a2f3a;
-    --text: #e8eaf0;
-    --muted: #9aa3b2;
-    --accent: #6366f1;
-    --accent-2: #22d3ee;
-    --green: #34d399;
-    --red: #f87171;
-    --amber: #fbbf24;
-    --radius: 12px;
+    --bg: #08090a;
+    --panel: #0f1011;
+    --surface: #191a1b;
+    --surface-2: #28282c;
+    --text: #f7f8f8;
+    --text-2: #d0d6e0;
+    --text-3: #8a8f98;
+    --text-4: #62666d;
+    --accent: #5e6ad2;
+    --accent-bright: #7170ff;
+    --accent-hover: #828fff;
+    --green: #27a644;
+    --red: #f26d6d;
+    --border: rgba(255,255,255,0.08);
+    --border-subtle: rgba(255,255,255,0.05);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: "cv01", "ss03";
+    -webkit-font-smoothing: antialiased;
     min-height: 100vh;
   }
   header {
-    display: flex; align-items: center; gap: 14px;
-    padding: 16px 28px;
-    border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, #14171f, #10131a);
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 28px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border-subtle);
     position: sticky; top: 0; z-index: 50;
-    backdrop-filter: blur(6px);
   }
-  header .logo { font-size: 24px; }
-  header h1 { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
-  header h1 .accent { background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .logo { font-size: 20px; line-height: 1; }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  header h1 .accent {
+    background: linear-gradient(90deg, #8b95f5, #7170ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
   .badge {
-    font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase;
-    padding: 3px 10px; border-radius: 999px;
-    background: rgba(99, 102, 241, .15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, .35);
+    font-size: 10px; font-weight: 500; letter-spacing: .4px; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px;
+    background: rgba(255,255,255,0.05); color: var(--text);
+    border: 1px solid var(--border);
   }
-  .meta { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
-  .meta code { background: var(--panel-2); padding: 3px 8px; border-radius: 6px; font-size: 11px; }
+  .meta { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-3); }
+  .meta code {
+    background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 4px;
+    font-size: 11px; font-family: ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
   .btn {
-    appearance: none; border: 1px solid var(--border); cursor: pointer;
-    background: var(--panel-2); color: var(--text);
-    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
-    transition: transform .06s ease, background .15s ease, border-color .15s ease;
+    appearance: none; border: 1px solid #24282c; cursor: pointer;
+    background: rgba(255,255,255,0.02); color: #e2e4e7;
+    padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    font-family: inherit; letter-spacing: -0.1px;
+    transition: background .12s ease, border-color .12s ease;
   }
-  .btn:hover { border-color: #3a4150; background: #242936; }
-  .btn:active { transform: scale(.97); }
+  .btn:hover { background: rgba(255,255,255,0.05); border-color: #34343a; }
+  .btn:active { transform: scale(.98); }
   .btn.primary {
-    background: linear-gradient(90deg, var(--accent), #4f46e5);
-    border-color: transparent; color: #fff;
+    background: var(--accent); border-color: transparent; color: #fff; font-weight: 500;
   }
-  .btn.primary:hover { filter: brightness(1.1); }
-  .btn.danger { color: var(--red); border-color: rgba(248, 113, 113, .3); }
-  .btn.danger:hover { background: rgba(248, 113, 113, .1); border-color: var(--red); }
-  .btn.small { padding: 5px 10px; font-size: 12px; }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.danger { color: var(--red); border-color: rgba(242, 109, 109, .25); }
+  .btn.danger:hover { background: rgba(242, 109, 109, .08); border-color: rgba(242, 109, 109, .5); }
+  .btn.small { padding: 5px 9px; font-size: 12px; }
   main { max-width: 1080px; margin: 0 auto; padding: 28px; }
-  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .toolbar .count { color: var(--muted); font-size: 13px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .toolbar .count { color: var(--text-3); font-size: 13px; font-weight: 500; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
   .card {
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 18px; display: flex; flex-direction: column; gap: 12px;
-    transition: border-color .15s ease, transform .1s ease;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    transition: background .12s ease, border-color .12s ease;
   }
-  .card:hover { border-color: #383f4d; transform: translateY(-1px); }
+  .card:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
   .card.disabled { opacity: .55; }
-  .card-top { display: flex; align-items: flex-start; gap: 10px; }
-  .card-top .name { font-size: 15px; font-weight: 700; flex: 1; word-break: break-word; }
+  .card-top { display: flex; align-items: center; gap: 10px; }
+  .card-top .icon { font-size: 17px; line-height: 1; }
+  .card-top .name { font-size: 15px; font-weight: 600; flex: 1; word-break: break-word; letter-spacing: -0.15px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip {
-    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
-    background: rgba(99, 102, 241, .12); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, .25);
+    font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px;
+    background: transparent; color: var(--text-2);
+    border: 1px solid #23252a; letter-spacing: -0.1px;
   }
-  .chip.off { background: rgba(154, 163, 178, .1); color: var(--muted); border-color: var(--border); }
+  .chip.off { color: var(--text-4); }
   .card-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; }
   .card-foot .spacer { flex: 1; }
-  .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .switch .slider {
-    position: absolute; inset: 0; border-radius: 999px; background: #333a47;
+    position: absolute; inset: 0; border-radius: 999px; background: var(--surface-2);
     transition: background .18s ease; cursor: pointer;
   }
   .switch .slider::before {
-    content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%;
-    left: 3px; top: 3px; background: #fff; transition: transform .18s ease;
+    content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%;
+    left: 3px; top: 3px; background: #f7f8f8; transition: transform .18s ease;
   }
-  .switch input:checked + .slider { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
-  .switch input:checked + .slider::before { transform: translateX(18px); }
+  .switch input:checked + .slider { background: linear-gradient(90deg, var(--accent), var(--accent-bright)); }
+  .switch input:checked + .slider::before { transform: translateX(16px); }
   .empty {
-    text-align: center; padding: 70px 20px; color: var(--muted);
-    border: 1px dashed var(--border); border-radius: var(--radius);
+    text-align: center; padding: 64px 20px; color: var(--text-3);
+    border: 1px dashed var(--border-subtle); border-radius: 8px;
   }
-  .empty .big { font-size: 44px; margin-bottom: 12px; }
-  .empty p { font-size: 14px; line-height: 1.6; }
+  .empty .big { font-size: 40px; margin-bottom: 14px; }
+  .empty p { font-size: 14px; line-height: 1.7; }
+  .empty p b { color: var(--text-2); font-weight: 600; }
   /* Modal */
   .overlay {
-    position: fixed; inset: 0; background: rgba(5, 7, 10, .7);
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
     display: none; align-items: flex-start; justify-content: center;
     padding: 40px 16px; z-index: 100; overflow-y: auto;
   }
   .overlay.open { display: flex; }
   .modal {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
-    width: 100%; max-width: 640px; padding: 24px; box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    width: 100%; max-width: 620px; padding: 24px;
+    box-shadow: rgba(0,0,0,0) 0px 8px 2px, rgba(0,0,0,0.01) 0px 5px 2px,
+                rgba(0,0,0,0.04) 0px 3px 2px, rgba(0,0,0,0.07) 0px 1px 1px,
+                rgba(0,0,0,0.08) 0px 0px 1px;
   }
-  .modal h2 { font-size: 16px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+  .modal h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.15px; margin-bottom: 18px; }
   .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
-  input[type=text], select, textarea {
-    width: 100%; padding: 9px 12px; border-radius: 8px;
-    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
-    font-size: 13px; font-family: inherit;
+  .field label {
+    display: block; font-size: 11px; font-weight: 600; color: var(--text-3);
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px;
   }
-  input[type=text]:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input[type=text], select, textarea {
+    width: 100%; padding: 8px 11px; border-radius: 6px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 13px; font-family: inherit;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  input[type=text]:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent-bright);
+    box-shadow: 0 0 0 3px rgba(113,112,255,0.2);
+  }
+  select option { background: var(--surface); color: var(--text-2); }
   .section-title {
     display: flex; align-items: center; justify-content: space-between;
-    margin: 20px 0 10px; padding-top: 16px; border-top: 1px solid var(--border);
-    font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px;
+    margin: 18px 0 10px; padding-top: 16px; border-top: 1px solid var(--border-subtle);
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: .5px;
   }
   .subrow {
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px;
     padding: 12px; margin-bottom: 10px;
   }
   .subrow .row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .subrow .row-head select { width: auto; min-width: 130px; }
-  .subrow .row-head .lbl { font-size: 12px; color: var(--muted); }
+  .subrow .row-head select { width: auto; min-width: 140px; }
+  .subrow .row-head .lbl { font-size: 12px; color: var(--text-4); margin-right: auto; }
   .subrow .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .subrow .fields .full { grid-column: 1 / -1; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
   /* Toast */
   #toasts { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 200; }
   .toast {
-    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
-    padding: 10px 16px; border-radius: 10px; font-size: 13px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: slidein .18s ease;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: 8px; font-size: 13px;
+    box-shadow: rgba(0,0,0,0.4) 0px 2px 4px; animation: slidein .18s ease;
   }
-  .toast.ok { border-color: rgba(52, 211, 153, .5); }
-  .toast.err { border-color: rgba(248, 113, 113, .5); }
+  .toast.ok { border-color: rgba(39, 166, 68, .5); }
+  .toast.err { border-color: rgba(242, 109, 109, .5); }
   @keyframes slidein { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
   @media (max-width: 640px) {
     .meta .hide-sm { display: none; }
     main { padding: 16px; }
   }
 </style>
+
 </head>
 <body>
 <header>
@@ -293,6 +322,14 @@ function renderCards() {
 
     const top = document.createElement("div");
     top.className = "card-top";
+    const trigs = wf.triggers || [];
+    const icon = document.createElement("span");
+    icon.className = "icon";
+    // The schedule trigger is a secondary field — prefer the main trigger.
+    const mainTrig = trigs.find(t => t.type !== "schedule") || trigs[0];
+    const firstTrig = mainTrig ? TRIGGERS[mainTrig.type] : null;
+    icon.textContent = firstTrig ? firstTrig.icon : "\u26a1";
+    top.appendChild(icon);
     const name = document.createElement("div");
     name.className = "name";
     name.textContent = wf.name || "(untitled)";
@@ -301,7 +338,6 @@ function renderCards() {
 
     const chips = document.createElement("div");
     chips.className = "chips";
-    const trigs = wf.triggers || [];
     if (trigs.length === 0) {
       const c = document.createElement("span");
       c.className = "chip off";

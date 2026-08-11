@@ -90,7 +90,11 @@ def test_editor_can_be_created(tmp_path):
     assert isinstance(dlg.box_trigger_config, Gtk.Box)
 
     # Default trigger type is "bluetooth" — verify config fields exist
-    trigger_children = dlg.box_trigger_config.get_children()
+    trigger_children = []
+    _child = dlg.box_trigger_config.get_first_child()
+    while _child is not None:
+        trigger_children.append(_child)
+        _child = _child.get_next_sibling()
     assert len(trigger_children) > 0  # at least Device + MAC entries
 
     # --- Actions section ---
@@ -116,7 +120,12 @@ def test_editor_can_be_created(tmp_path):
 def test_editor_loads_existing_workflow(tmp_path):
     """When workflow_id is passed, the dialog pre-fills fields from the DB."""
     db_path = str(tmp_path / "test_load.db")
-    conn = _make_db()
+    # NOTE: the dialog opens its own connection to this file, so the test
+    # data must be written to the file (not an in-memory DB).
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    init_db(conn)
     try:
         wf = Workflow(name="Existing Workflow", enabled=False)
         wf.save(conn)
@@ -176,8 +185,7 @@ def test_editor_saves_new_workflow(tmp_path):
     dlg._on_add_action(None)
     row = dlg._action_rows[0]
     row["type_dropdown"].set_selected(0)  # shell
-    row["command_entry"].set_text("echo hello")
-    row["args_entry"].set_text("")
+    row["shell_entry"].set_text("echo hello")
 
     # Collect signal data
     saved_ids = []
