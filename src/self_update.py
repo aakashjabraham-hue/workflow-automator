@@ -83,6 +83,29 @@ def banner() -> None:
     print(c("╰──────────────────────────────────────────────╯", Style.CYAN))
 
 
+def _ask(prompt: str, default: bool) -> bool:
+    """Ask a yes/no question, returning *default* when stdin is unavailable.
+
+    ``curl | bash`` one-liners close stdin once curl finishes, so a plain
+    ``input()`` would raise EOFError and kill the wizard mid-install.  When
+    stdin is not a tty (or reading fails) we fall back to the prompt's
+    default instead of crashing — the same result as pressing Enter.
+    """
+    suffix = "Y/n" if default else "y/N"
+    if not sys.stdin.isatty():
+        print(c("  ℹ️   Non-interactive install — using the default.", Style.DIM))
+        print(c(f"       ({'enabled' if default else 'skipped'} — run `workflow-automator install` to change)", Style.DIM))
+        return default
+    try:
+        answer = input(c(f"  {prompt} ({suffix}): ", Style.YELLOW)).strip().lower()
+    except (EOFError, OSError):
+        print(c("  ℹ️   No input available — using the default.", Style.DIM))
+        return default
+    if not answer:
+        return default
+    return answer in ("y", "yes")
+
+
 # ---------------------------------------------------------------------------
 # Version helpers
 # ---------------------------------------------------------------------------
@@ -467,7 +490,7 @@ def cmd_install(skip_download: bool = False) -> None:
     print(c(f"  ✅  Installed v{version} → {path}", Style.GREEN))
 
     # Auto-chain: daemon enablement (the one-liner happy path)
-    if input(c("  🤖  Enable the background daemon + auto-start? (Y/n): ", Style.YELLOW)).strip().lower() != "n":
+    if _ask("🤖   Enable the background daemon + auto-start?", default=True):
         setup_daemon()
 
     # Summary
@@ -526,11 +549,7 @@ def cmd_uninstall(confirm: bool | None = None) -> None:
     banner()
     print()
     if confirm is None:
-        confirm = (
-            input(c("  🗑️   Uninstall workflow-automator? This stops the daemon. (y/N): ", Style.YELLOW))
-            .strip().lower()
-            in ("y", "yes")
-        )
+        confirm = _ask("🗑️   Uninstall workflow-automator? This stops the daemon.", default=False)
     if not confirm:
         print(c("  Aborted — nothing was removed.", Style.DIM))
         return
@@ -549,12 +568,7 @@ def cmd_uninstall(confirm: bool | None = None) -> None:
 
     db = default_db_path()
     if os.path.exists(db):
-        remove_db = (
-            input(c("  🗑️   Also remove your workflows database? (y/N): ", Style.YELLOW))
-            .strip().lower()
-            in ("y", "yes")
-        )
-        if remove_db:
+        if _ask("🗑️   Also remove your workflows database?", default=False):
             os.remove(db)
             print(c(f"  ✅  Removed database ({db})", Style.GREEN))
         else:

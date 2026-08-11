@@ -137,6 +137,39 @@ def test_running_from_checkout_detects_repo():
     assert checkout.endswith("workflow-automator")
 
 
+# ---------------------------------------------------------------------------
+# _ask() — the EOF-safe prompt (curl | bash has no stdin)
+# ---------------------------------------------------------------------------
+
+def test_ask_non_tty_uses_default(monkeypatch, capsys):
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    assert su._ask("Proceed?", default=True) is True
+    assert su._ask("Proceed?", default=False) is False
+    assert "Non-interactive" in capsys.readouterr().out
+
+
+def test_ask_eof_falls_back_to_default(monkeypatch, capsys):
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p=None: (_ for _ in ()).throw(EOFError()))
+    assert su._ask("Proceed?", default=True) is True
+    assert su._ask("Proceed?", default=False) is False
+    assert "No input available" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "answer,default,expected",
+    [
+        ("y", False, True), ("yes", False, True), ("Y", True, True),
+        ("n", True, False), ("no", True, False), ("N", False, False),
+        ("", True, True), ("", False, False), ("weird", False, False),
+    ],
+)
+def test_ask_parses_answers(monkeypatch, answer, default, expected):
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p, a=answer: a)
+    assert su._ask("Q?", default=default) is expected
+
+
 def test_real_launcher_runs_from_any_cwd(tmp_path):
     launcher = str(os.path.join(os.path.dirname(os.path.dirname(__file__)), "launcher.py"))
     out = os.popen(f'cd "{tmp_path}" && {sys.executable} "{launcher}" version').read()
