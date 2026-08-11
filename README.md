@@ -19,6 +19,24 @@ Think Tasker for Linux: connect Bluetooth headphones → launch Spotify → play
 
 ## Quick Start
 
+### One-liner install (Linux / macOS)
+
+```bash
+curl -fL https://raw.githubusercontent.com/aakashjabraham-hue/workflow-automator/master/install.sh | bash
+```
+
+### One-liner install (Windows — PowerShell 5.1+)
+
+```powershell
+irm https://raw.githubusercontent.com/aakashjabraham-hue/workflow-automator/master/install.ps1 | iex
+```
+
+The installer downloads the **latest** version from GitHub, installs the
+`workflow-automator` command, and offers to enable the background daemon.
+No manual follow-up steps.
+
+### Manual / development setup
+
 ```bash
 # Clone and enter
 cd ~/workflow-automator
@@ -29,6 +47,25 @@ sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-4.0 playerctl
 # Launch the GUI
 /usr/bin/python3 -m src.main
 ```
+
+---
+
+## CLI Commands
+
+| Command | What it does |
+|---------|--------------|
+| `workflow-automator` | Opens the automation dashboard (GUI) |
+| `workflow-automator dashboard` | Same as above — explicit |
+| `workflow-automator daemon` | Runs the background daemon (`--foreground --verbose` for testing) |
+| `workflow-automator update` | Pulls the latest from GitHub and restarts the daemon if running |
+| `workflow-automator install` | Installs/repairs the CLI (downloads latest from GitHub) |
+| `workflow-automator uninstall` | Stops the daemon, removes the CLI, app files and (optionally) your workflows |
+| `workflow-automator version` | Shows the installed version |
+| `workflow-automator --version` | Same, as a flag |
+
+In development mode (running from the repo checkout), `update` runs
+`git pull` — in installed mode it downloads the latest release from GitHub.
+`update` never downgrades and never re-downloads when you're already current.
 
 ---
 
@@ -49,13 +86,19 @@ For triggers to fire automatically (Bluetooth, power, schedules), the daemon mus
 
 ```bash
 # Run in foreground (for testing)
-cd ~/workflow-automator && /usr/bin/python3 -m src.main --daemon --foreground
+cd ~/workflow-automator && /usr/bin/python3 -m src.main daemon --foreground --verbose
 
-# Run as a systemd user service (auto-starts on login)
-python3 -m src.main --install-service
-systemctl --user enable --now workflow-automator
+# Install as a user service that auto-starts on login
+workflow-automator install        # then answer "y" to the daemon prompt
+# Or, from the checkout:
+systemctl --user enable --now workflow-automator   # Linux only
 journalctl --user -u workflow-automator -f
 ```
+
+The daemon auto-registers on each platform:
+- **Linux** → systemd user service
+- **macOS** → launchd LaunchAgent
+- **Windows** → Task Scheduler (run at logon)
 
 ---
 
@@ -139,9 +182,14 @@ When you connect your Bluetooth speaker, dim the screen and launch VLC:
 
 ```
 workflow-automator/
+├── launcher.py                # Cwd-independent entry point (used by the installed CLI)
+├── install.sh                 # One-liner installer (Linux/macOS)
+├── install.ps1                # One-liner installer (Windows)
 ├── src/
-│   ├── main.py                 # Entry point (GUI or daemon)
-│   ├── app.py                  # GTK Application
+│   ├── main.py                # Entry point: GUI, daemon, install/update/uninstall/version
+│   ├── paths.py               # Platform-aware paths (Linux/macOS/Windows)
+│   ├── self_update.py         # install/update/uninstall + daemon registration
+│   ├── app.py                 # GTK Application
 │   ├── gui/
 │   │   ├── main_window.py      # Workflow list view
 │   │   ├── workflow_editor.py  # Workflow creation/editing dialog
@@ -169,6 +217,25 @@ workflow-automator/
 └── tests/
     └── ...
 ```
+
+---
+
+## Cross-Platform Support
+
+| | Linux | macOS | Windows |
+|--|-------|-------|---------|
+| **CLI** (`dashboard`, `daemon`, `update`, `install`, `uninstall`, `version`) | ✅ | ✅ | ✅ |
+| **Dashboard GUI** (GTK4) | ✅ | via `brew install pygobject3 gtk4` | via GTK for Python |
+| **Daemon autostart** | systemd user service | launchd LaunchAgent | Task Scheduler |
+| **Bluetooth / Power / Network triggers** | ✅ | — (no BlueZ/sysfs) | — |
+| **Schedule trigger (cron)** | ✅ | ✅ | ✅ |
+| **Shell / Launch / Notify actions** | ✅ | ✅ | ✅ (notify via PowerShell balloon) |
+| **Media actions (MPRIS/playerctl)** | ✅ | — | — |
+| **Database** | `~/.workflow-automator/workflows.db` | `~/Library/Application Support/workflow-automator/` | `%APPDATA%\workflow-automator\` |
+
+Platform-specific triggers simply never fire on unsupported OSes — the
+daemon degrades gracefully instead of crashing. `update` and `install`
+always fetch the latest from GitHub, cache-busted, on every platform.
 
 ---
 

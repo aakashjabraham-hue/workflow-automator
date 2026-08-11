@@ -4,8 +4,7 @@ After=graphical-session.target bluetooth.target power-profiles-daemon.service
 
 [Service]
 Type=simple
-ExecStart=%h/workflow-automator/venv/bin/python -m src.main --daemon --db %h/.workflow-automator/workflows.db
-WorkingDirectory=%h/workflow-automator
+ExecStart=%h/.local/bin/workflow-automator daemon
 Restart=on-failure
 RestartSec=5
 

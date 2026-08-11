@@ -2,17 +2,38 @@
 
 ## Installation
 
-### From PyPI
+### One-liner install (Linux / macOS)
 
 ```bash
-pip install workflow-automator
+curl -fL https://raw.githubusercontent.com/aakashjabraham-hue/workflow-automator/master/install.sh | bash
 ```
 
-### From Flatpak
+### One-liner install (Windows — PowerShell 5.1+)
+
+```powershell
+irm https://raw.githubusercontent.com/aakashjabraham-hue/workflow-automator/master/install.ps1 | iex
+```
+
+Always installs the **latest** version from GitHub. The installer offers to
+enable the background daemon so workflows fire automatically.
+
+### Staying up to date
 
 ```bash
-flatpak install com.workflow.Automator
+workflow-automator update
 ```
+
+`update` pulls the latest from GitHub (a `git pull` when run from a
+development checkout). If the daemon is running it is restarted automatically.
+
+### Removing
+
+```bash
+workflow-automator uninstall
+```
+
+Stops the daemon, removes the CLI and app files, then asks whether to keep
+or delete your workflows database.
 
 ## First Run
 

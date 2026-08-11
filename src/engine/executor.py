@@ -1,4 +1,6 @@
+import shlex
 import subprocess
+import sys
 from typing import Any
 
 
@@ -77,10 +79,10 @@ class ActionExecutor:
         """Launch a desktop app via subprocess.Popen (non-blocking).
 
         Uses shlex.split so flatpak / snap / env-prefixed cmds work.
+        ``posix=False`` on Windows keeps quoted paths with backslashes intact.
         """
-        import shlex
         try:
-            full_cmd = shlex.split(command)
+            full_cmd = shlex.split(command, posix=sys.platform != "win32")
             proc = subprocess.Popen(full_cmd)
             return {
                 "success": True,
@@ -91,9 +93,32 @@ class ActionExecutor:
             return {"success": False, "output": "", "error": str(e)}
 
     def _execute_notify(self, command: str, args: list) -> dict:
-        """Send a desktop notification via notify-send."""
+        """Send a desktop notification.
+
+        Backend is platform-aware:
+          Linux   → notify-send
+          macOS   → osascript display notification
+          Windows → PowerShell NotifyIcon balloon tip
+        """
+        subject = command or "Workflow Automator"
+        body = args[0] if args else ""
         try:
-            cmd = ["notify-send", command] + list(args)
+            if sys.platform == "win32":
+                ps = (
+                    "Add-Type -AssemblyName System.Windows.Forms; "
+                    "$n = New-Object System.Windows.Forms.NotifyIcon; "
+                    "$n.Icon = [System.Drawing.SystemIcons]::Information; "
+                    "$n.Visible = $true; "
+                    f"$n.BalloonTipTitle = '{subject.replace(chr(39), chr(39)*2)}'; "
+                    f"$n.BalloonTipText = '{body.replace(chr(39), chr(39)*2)}'; "
+                    "$n.ShowBalloonTip(4000)"
+                )
+                cmd = ["powershell", "-NoProfile", "-Command", ps]
+            elif sys.platform == "darwin":
+                script = f'display notification "{body}" with title "{subject}"'
+                cmd = ["osascript", "-e", script]
+            else:
+                cmd = ["notify-send", subject] + ([body] if body else [])
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -106,13 +131,13 @@ class ActionExecutor:
             return {
                 "success": False,
                 "output": output,
-                "error": f"notify-send exited with code {result.returncode}",
+                "error": f"notify exited with code {result.returncode}",
             }
         except subprocess.TimeoutExpired:
             return {
                 "success": False,
                 "output": "",
-                "error": f"notify-send timed out after {self.TIMEOUT}s",
+                "error": f"notify timed out after {self.TIMEOUT}s",
             }
         except OSError as e:
             return {"success": False, "output": "", "error": str(e)}
@@ -134,6 +159,12 @@ class ActionExecutor:
         Retries up to 5 times with 1-second delays to give the player
         time to start and register its MPRIS interface.
         """
+        if sys.platform in ("win32", "darwin"):
+            return {
+                "success": False,
+                "output": "",
+                "error": "Media control (MPRIS via playerctl) is currently Linux-only",
+            }
         import time
 
         parts = command.split("|", 1)
