@@ -8,7 +8,7 @@ Think Tasker for Linux: connect Bluetooth headphones → launch Spotify → play
 
 ## Features
 
-- **Event-driven triggers**: Bluetooth device connect, AC power plug/unplug, cron schedules, network changes
+- **Event-driven triggers**: Bluetooth device connect, AC power plug/unplug, cron schedules
 - **Multiple action types**: Launch apps, run shell commands, send notifications, control media players via MPRIS
 - **MPRIS media control**: Play, pause, skip tracks, or open playlists in Spotify, VLC, Firefox, and any MPRIS-capable player
 - **Background daemon**: Runs as a systemd user service so workflows fire even when the GUI is closed
@@ -91,7 +91,7 @@ workflow-automator dashboard
   workflow-automator dashboard --port 9000
   ```
 - **Everything the desktop app does**: create / edit / delete workflows,
-  configure triggers (Bluetooth, power, schedule/cron, network, shell) and
+  configure triggers (Bluetooth, power, schedule/cron) and
   actions (shell, launch, notify, media), toggle workflows on/off.
 - Works headless: `ssh` into a machine and `dashboard` still serves — just
   open the printed URL yourself.
@@ -202,8 +202,6 @@ When you connect your Bluetooth speaker, dim the screen and launch VLC:
 | **Bluetooth** | Fires when a specific paired Bluetooth device connects |
 | **Power** | Fires when AC power is plugged in or unplugged (polls every 10s) |
 | **Schedule** | Cron-like scheduling (`0 8 * * *` for daily at 8am) |
-| **Network** | Fires when connecting to a specific network/SSID |
-| **Shell** | Fires when a watched command exits with a specific output |
 
 ---
 

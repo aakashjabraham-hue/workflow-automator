@@ -1,3 +1,4 @@
+import os
 import shlex
 import subprocess
 import sys
@@ -83,7 +84,50 @@ class ActionExecutor:
         """
         try:
             full_cmd = shlex.split(command, posix=sys.platform != "win32")
-            proc = subprocess.Popen(full_cmd)
+
+            # GUI apps launched from the daemon (a systemd user service)
+            # inherit no graphical session environment, so their windows
+            # never appear.  Fill in the well-known variables from the
+            # running user session when missing.
+            env = dict(os.environ)
+            if sys.platform.startswith("linux"):
+                import glob as _glob
+
+                session_vars = {
+                    "DISPLAY": ":0",
+                    "WAYLAND_DISPLAY": None,  # resolved below
+                    "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}",
+                    "DBUS_SESSION_BUS_ADDRESS": f"unix:path=/run/user/{os.getuid()}/bus",
+                }
+                for var, default in session_vars.items():
+                    if not env.get(var):
+                        if var == "WAYLAND_DISPLAY":
+                            # Prefer an existing socket in the runtime dir.
+                            found = _glob.glob(
+                                os.path.join(
+                                    env.get("XDG_RUNTIME_DIR",
+                                            f"/run/user/{os.getuid()}"),
+                                    "wayland-*",
+                                )
+                            )
+                            if found:
+                                env["WAYLAND_DISPLAY"] = os.path.basename(found[0])
+                            else:
+                                continue
+                        else:
+                            env[var] = default
+            elif sys.platform == "darwin":
+                env.setdefault("DISPLAY", ":0")
+
+            kwargs: dict = {"env": env}
+            if sys.platform == "win32":
+                # DETACHED_PROCESS so the child outlives the daemon;
+                # CREATE_NEW_CONSOLE gives GUI apps a visible context.
+                kwargs["creationflags"] = (
+                    subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                )
+
+            proc = subprocess.Popen(full_cmd, **kwargs)
             return {
                 "success": True,
                 "output": f"Launched {command} with PID {proc.pid}",

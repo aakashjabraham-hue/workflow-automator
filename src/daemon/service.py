@@ -120,7 +120,14 @@ class DaemonService:
                     workflow.id,
                 )
                 continue
-            trigger = cls(row.config)
+            # ScheduleTrigger takes (cron_expr, workflow_id, config); every
+            # other builtin takes (config,).  Build args accordingly so a
+            # saved schedule workflow doesn't raise TypeError at startup.
+            if cls.__name__ == "ScheduleTrigger":
+                cron_expr = (row.config or {}).get("cron_expr") or "* * * * *"
+                trigger = cls(cron_expr, workflow.id, row.config)
+            else:
+                trigger = cls(row.config)
             trigger.workflow_id = workflow.id
             self._triggers.append(trigger)
             self.event_bus.register_trigger(trigger)

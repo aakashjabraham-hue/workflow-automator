@@ -53,7 +53,9 @@ class TestActionExecutor:
             result = self.executor.execute(action)
 
         assert result["success"] is True
-        mock_popen.assert_called_once_with(["spotify"])
+        # Popen now receives env (session vars for GUI apps); check the command.
+        mock_popen.assert_called_once()
+        assert mock_popen.call_args[0][0] == ["spotify"]
 
     def test_notify_action(self):
         """Verify notify-send is called with correct args."""
